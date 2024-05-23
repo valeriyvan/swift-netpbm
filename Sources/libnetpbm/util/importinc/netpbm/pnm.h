@@ -1,0 +1,1 @@
+/Users/valeriyvan/Documents/geometrize/netpbm/lib/pnm.h

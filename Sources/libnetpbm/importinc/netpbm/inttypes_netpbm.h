@@ -1,0 +1,1 @@
+/Users/valeriyvan/Documents/geometrize/netpbm/inttypes_netpbm.h
