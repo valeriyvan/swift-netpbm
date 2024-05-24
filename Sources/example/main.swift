@@ -1,7 +1,6 @@
 import Foundation
 import libnetpbm
 
-
 /*
    Example program fragment to read a PAM or PNM image
    from stdin, add up the values of every sample in it
@@ -52,4 +51,4 @@ for _ in 0..<inpam.height {
 
 // Free the allocated memory for the tuple row
 // pnm_freepamrow(tuplerow)
-pm_freerow(tuplerow) // use pnm_freepamrow as pnm_freepamrow is define and unavailable from Swift
+pm_freerow(tuplerow) // use pnm_freerow as pnm_freepamrow is define and unavailable from Swift
