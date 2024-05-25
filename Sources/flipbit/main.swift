@@ -26,6 +26,8 @@ import libnetpbm
 //  This is Swift version of example from
 //  https://github.com/frasercadger/netpbm_examples/blob/master/pbm_bitflip/src/main.c
 
+//  TODO: test on sunrise_at_sea.ppm which fails at reading file
+
 let PBM_MAGIC1: Int = Int(Character("P").asciiValue!)
 let PBM_MAGIC2: Int = Int(Character("1").asciiValue!)
 let RPBM_MAGIC2: Int = Int(Character("4").asciiValue!)
