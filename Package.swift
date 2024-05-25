@@ -6,6 +6,7 @@ let package = Package(
     name: "libnetpbm",
     products: [
         .library(name: "libnetpbm", targets: ["libnetpbm"]),
+        .library(name: "netpbm", targets: ["netpbm"]), // Swift wrapper over libnetpbm
         .executable(name: "example", targets: ["example"]),
         .executable(name: "flipbit", targets: ["flipbit-example"])
     ],
@@ -27,6 +28,10 @@ let package = Package(
                 ),
                 .headerSearchPath("importinc/netpbm"),
             ]
+        ),
+        .target(
+            name: "netpbm",
+            dependencies: ["libnetpbm"]
         ),
         .executableTarget(
             name: "example",
