@@ -1,0 +1,25 @@
+# This workflow will build a Swift project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
+
+name: Build&test macOS
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on:  macos-latest # used to be macos-latest
+                       # look https://github.com/actions/runner-images/issues/6384 for info 
+                       # why it was changed from macos-latest to macOS-12
+
+    steps:
+    - uses: swift-actions/setup-swift@v2
+    - name: Check out repository code
+      uses: actions/checkout@v4
+    - name: Build
+      run: swift build -v
+    - name: Run tests
+      run: swift test -v
