@@ -7,7 +7,7 @@ let package = Package(
     products: [
         .library(name: "libnetpbm", targets: ["libnetpbm"]),
         .executable(name: "example", targets: ["example"]),
-        .executable(name: "flipbit", targets: ["flipbit"])
+        .executable(name: "flipbit", targets: ["flipbit-example"])
     ],
     targets: [
         .target(
@@ -35,7 +35,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "flipbit",
+            name: "flipbit-example",
             dependencies: [
                 "libnetpbm"
             ]
