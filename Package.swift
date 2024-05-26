@@ -51,6 +51,13 @@ let package = Package(
             dependencies: [
                 "libnetpbm"
             ]
+        ),
+        .testTarget(
+            name: "netpbmTests",
+            dependencies: [
+                "netpbm"
+            ]
         )
+
     ]
 )
