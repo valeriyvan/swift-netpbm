@@ -23,7 +23,8 @@ let package = Package(
                     "-Wno-uninitialized", "-Wmissing-declarations", "-Wimplicit",
                     "-Wwrite-strings", "-Wmissing-prototypes", "-Wundef",
                     "-Wno-unknown-pragmas", "-Wno-strict-overflow",
-                    "-Wno-implicit-function-declaration", "-Wmacro-redefined"
+                    "-Wno-implicit-function-declaration", "-Wmacro-redefined",
+                    "-Wno-conversion", "-Wno-strict-prototypes"
                     ]
                 ),
                 .headerSearchPath("importinc/netpbm"),
