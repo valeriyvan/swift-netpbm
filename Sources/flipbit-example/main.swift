@@ -67,7 +67,7 @@ func pbmBitflip(_ pIn: inout pam, _ pOut: inout pam) {
 // Function to read a PBM image
 func read_pbm_image(filename: String, pInput: inout pam) -> Bool {
     // Open image as regular file
-    guard let pInputFile = fopen(filename, "r") else {
+    guard let pInputFile: UnsafeMutablePointer<FILE> = fopen(filename, "r") else {
         return false
     }
 
