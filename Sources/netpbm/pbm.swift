@@ -10,7 +10,7 @@ var argv: [UnsafeMutablePointer<CChar>?] = [UnsafeMutablePointer(&`nil`), nil]
 public struct PBM {
 
     public init() {
-        pbm_init(&argc, &argv)
+        pbm_init(&argc, &argv) // TODO: finalize initialization
     }
 
     // C ordering for pixels, row by row
