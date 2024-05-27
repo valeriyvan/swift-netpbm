@@ -9,7 +9,7 @@ import XCTest
 final class netpbmTests: XCTestCase {
 
     func testReadFirstImageFromString() throws {
-        let (rows, cols, pixels) = try PBM.readFirstImage(string:
+        let (rows, cols, pixels) = try PBM.firstImage(string:
             """
             P1
             # Image 1: 5x4 checkerboard pattern
