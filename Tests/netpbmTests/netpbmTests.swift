@@ -1,6 +1,11 @@
 import XCTest
 @testable import netpbm
 
+// Tests crashes if image is broken e.g. some pixels are missing.
+// Instead of returning error libnetpbm just crashes.
+// It looks not always checking result of malloc which will lead
+// to crash in law memory conditions.
+
 final class netpbmTests: XCTestCase {
 
     func testReadFirstImageFromString() throws {
