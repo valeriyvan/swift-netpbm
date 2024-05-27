@@ -14,21 +14,21 @@ public struct PBM {
     }
 
     // C ordering for pixels, row by row
-    public static func readFirstImage(filename: String) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
+    public static func firstImage(filename: String) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
         guard let file: UnsafeMutablePointer<FILE> = fopen(filename, "r") else {
             throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
         }
         defer { fclose(file) }
-        return try PBM.readImage(file: file)
+        return try PBM.image(file: file)
     }
 
-    public static func readFirstImage(string: String) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
+    public static func firstImage(string: String) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
         try string.withCString {
             guard let file: UnsafeMutablePointer<FILE> = fmemopen(UnsafeMutableRawPointer(mutating: $0), strlen($0), "r") else {
                 throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
             }
             defer { fclose(file) }
-            return try PBM.readImage(file: file)
+            return try PBM.image(file: file)
         }
     }
 
@@ -56,13 +56,13 @@ public struct PBM {
             var eof: Int32 = 0
             pm_nextimage(file, &eof)
             guard eof == 0 else { break }
-            images.append(try PBM.readImage(file: file))
+            images.append(try PBM.image(file: file))
         }
         return images
     }
 
     // Leaves file open ready to read next image from the same file
-    private static func readImage(file: UnsafeMutablePointer<FILE>) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
+    private static func image(file: UnsafeMutablePointer<FILE>) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
         var cols: Int32 = 0
         var rows: Int32 = 0
         guard let bits: UnsafeMutablePointer<UnsafeMutablePointer<bit>?> = pbm_readpbm(file, &cols, &rows) else {
