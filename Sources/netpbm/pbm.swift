@@ -1,5 +1,6 @@
 import Foundation
 
+
 public struct PBM {
 
     enum PbmParseError: Error {
@@ -21,7 +22,7 @@ public struct PBM {
         guard let file: UnsafeMutablePointer<FILE> = fopen(filename, "r") else {
             throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
         }
-        let image = try PBM._image_by_raw(file: file)
+        let image = try PBM.image(file: file)
         guard fclose(file) != EOF else {
             throw PBM.PbmParseError.ioError
         }
@@ -34,7 +35,7 @@ public struct PBM {
             guard let file: UnsafeMutablePointer<FILE> = fmemopen(UnsafeMutableRawPointer(mutating: $0), strlen($0), "r") else {
                 throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
             }
-            let image = try PBM._image_by_raw(file: file)
+            let image = try PBM.image(file: file)
             guard fclose(file) != EOF else {
                 throw PBM.PbmParseError.ioError
             }
@@ -75,14 +76,14 @@ public struct PBM {
         while true {
             let eof = try _pm_nextimage(file)
             guard !eof else { break }
-            let image = try PBM._image_by_raw(file: file)
+            let image = try PBM.image(file: file)
             images.append(image)
         }
         return images
     }
 
     // Parse a single image from a file pointer
-    private static func _image_by_raw(file: UnsafeMutablePointer<FILE>) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
+    private static func image(file: UnsafeMutablePointer<FILE>) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
         let (cols, rows, format) = try _pbm_readpbminit(file) // TODO: test with broken header
         // TODO: test format is as expected
         let capacity = Int(rows * cols)
