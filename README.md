@@ -1,7 +1,7 @@
 # swift-netpbm
 This Swift package vends C libnetpbm library for image manipulation.
 
-[Netpbm](https://netpbm.sourceforge.net/doc/).
+[Netpbm homepage](https://netpbm.sourceforge.net/doc/).
 
 [Netpbm in Wikipedia](https://en.wikipedia.org/wiki/Netpbm)
 
