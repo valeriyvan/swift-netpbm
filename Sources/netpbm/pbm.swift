@@ -1,5 +1,110 @@
 import Foundation
 
+public class PBMImageSequence: AsyncSequence {
+    public typealias Element = PBMImageBitSequence
+    public typealias AsyncIterator = Iterator
+
+    public struct Iterator: AsyncIteratorProtocol {
+        let file: UnsafeMutablePointer<FILE>
+
+        init(file: UnsafeMutablePointer<FILE>) {
+            self.file = file
+        }
+
+        public mutating func next() async throws -> PBMImageBitSequence? {
+            let eof = try PBM._pm_nextimage(file)
+            guard !eof else { return nil }
+            return try PBMImageBitSequence(file: file)
+        }
+    }
+
+    let file: UnsafeMutablePointer<FILE>
+    
+    public init(string: String) throws {
+        file = try string.withCString {
+            guard let file: UnsafeMutablePointer<FILE> = fmemopen(UnsafeMutableRawPointer(mutating: $0), strlen($0), "r") else {
+                throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
+            }
+            return file
+        }
+    }
+
+    public init(pathname: String) throws {
+        guard let file: UnsafeMutablePointer<FILE> = fopen(pathname, "r") else {
+            throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
+        }
+        self.file = file
+    }
+
+    deinit {
+        if fclose(file) == EOF {
+            print("Error \(errno) closing file")
+        }
+    }
+
+    public func makeAsyncIterator() -> Iterator {
+        Iterator(file: file)
+    }
+}
+
+public struct PBMImageBitSequence: AsyncSequence {
+    public typealias Element = Bit
+    public typealias AsyncIterator = Iterator
+
+    public struct Iterator: AsyncIteratorProtocol {
+        var currentRow = -1
+        var rowBits: [Bit] = []
+        var currentBitIndex = 0
+        let cols: Int32
+        let rows: Int32
+        let format: Int32
+        let file: UnsafeMutablePointer<FILE>
+
+        init(file: UnsafeMutablePointer<FILE>, cols: Int32, rows: Int32, format: Int32) {
+            self.file = file
+            self.cols = cols
+            self.rows = rows
+            self.format = format
+        }
+
+        public mutating func next() async throws -> Bit? {
+            if currentRow == -1 {
+                rowBits = try PBM._pbm_readpbmrow(file, cols: cols, format: format)
+                currentRow = 0
+                currentBitIndex = 0
+                defer { currentBitIndex += 1 }
+                return rowBits[currentBitIndex]
+            } else if currentBitIndex < rowBits.count {
+                defer { currentBitIndex += 1 }
+                return rowBits[currentBitIndex]
+            } else if currentRow < rows-1 {
+                rowBits = try PBM._pbm_readpbmrow(file, cols: cols, format: format)
+                currentRow += 1
+                currentBitIndex = 0
+                defer { currentBitIndex += 1 }
+                return rowBits[currentBitIndex]
+            }
+            return nil
+        }
+    }
+
+    public var width: Int { Int(cols) }
+    public var height: Int { Int(rows) }
+
+    private let file: UnsafeMutablePointer<FILE>
+    private let cols: Int32
+    private let rows: Int32
+    private let format: Int32
+
+    init(file: UnsafeMutablePointer<FILE>) throws {
+        self.file = file
+        (cols, rows, format) = try PBM._pbm_readpbminit(file) // TODO: test with broken header
+    }
+
+    public func makeAsyncIterator() -> Iterator {
+        return Iterator(file: file, cols: cols, rows: rows, format: format)
+    }
+}
 
 public struct PBM {
 
@@ -69,7 +174,6 @@ public struct PBM {
         }
     }
 
-
     // Helper function to parse all images from a file pointer
     private static func images(file: UnsafeMutablePointer<FILE>) throws -> [(rows: Int, cols: Int, pixels: [UInt8])] {
         var images: [(rows: Int, cols: Int, pixels: [UInt8])] = []
@@ -101,7 +205,7 @@ public struct PBM {
 
     // Move to the next image in the file stream
     // TODO: reverse return value
-    private static func _pm_nextimage(_ file: UnsafeMutablePointer<FILE>) throws -> Bool {
+    fileprivate static func _pm_nextimage(_ file: UnsafeMutablePointer<FILE>) throws -> Bool {
     /*----------------------------------------------------------------------------
        Position the file 'file' to the next image in the stream, assuming it is
        now positioned just after the current image.  I.e. read off any white
@@ -183,7 +287,7 @@ public struct PBM {
     }
 
     // Read a row of bits from the file
-    private static func _pbm_readpbmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, format: Int32) throws -> [Bit] {
+    fileprivate static func _pbm_readpbmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, format: Int32) throws -> [Bit] {
         var bitRow: [Bit] = []
         var bitshift = 0
         switch format {
@@ -219,7 +323,7 @@ public struct PBM {
     }
 
     // Initialize PBM reading, checking the format
-    private static func _pbm_readpbminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32, rows: Int32, format: Int32) {
+    fileprivate static func _pbm_readpbminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32, rows: Int32, format: Int32) {
         let realFormat = try _pm_readmagicnumber(file)
 
         var cols: Int32 = 0, rows: Int32 = 0
