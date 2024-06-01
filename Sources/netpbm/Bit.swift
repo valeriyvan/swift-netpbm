@@ -3,7 +3,7 @@ public enum Bit: Int {
     case one
 }
 
-extension Bit {
+public extension Bit {
     @inlinable func inverted() -> Bit {
         self == .zero ? .one : .zero
     }
