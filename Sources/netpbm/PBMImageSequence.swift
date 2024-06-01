@@ -1,6 +1,34 @@
 import Foundation
 
-public class PBMImageSequence: AsyncSequence {
+// Note about using UnsafeMutablePointer<FILE> instead of FileHandle.
+//
+// Would be nice to rewrite using FileHandle instead of UnsafeMutablePointer<FILE>.
+// UnsafeMutablePointer<FILE> is plane C old API.
+// FileHandle is from Objective-C era, but Swift friendly, could close file when FileHandle
+// is deallocated, has API for async reading/writing.
+// But FileHandle has API fragmented between different macOS versions for simple things
+// like reading data from file.
+// UnsafeMutablePointer<FILE> is settled API available everywhere.
+// So it's questionable if FileHandle usage here is beneficial.
+
+public struct PBMImageSequence: AsyncSequence {
+
+    // Closes file on deinit.
+    // Allows PBMImageSequence be struct and handle file close.
+    class FileWrapper {
+        let file: UnsafeMutablePointer<FILE>
+
+        init(file: UnsafeMutablePointer<FILE>) {
+            self.file = file
+        }
+
+        deinit {
+            if fclose(file) == EOF {
+                print("Error \(errno) closing file")
+            }
+        }
+    }
+
     public typealias Element = PBMImageBitSequence
     public typealias AsyncIterator = Iterator
 
@@ -18,28 +46,25 @@ public class PBMImageSequence: AsyncSequence {
         }
     }
 
-    public let file: UnsafeMutablePointer<FILE>
+    public var file: UnsafeMutablePointer<FILE> { fileWrapper.file }
+
+    let fileWrapper: FileWrapper
 
     public init(string: String) throws {
-        file = try string.withCString {
+        let file = try string.withCString {
             guard let file: UnsafeMutablePointer<FILE> = fmemopen(UnsafeMutableRawPointer(mutating: $0), strlen($0), "r") else {
                 throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
             }
             return file
         }
+        self.fileWrapper = FileWrapper(file: file)
     }
 
     public init(pathname: String) throws {
         guard let file: UnsafeMutablePointer<FILE> = fopen(pathname, "r") else {
             throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
         }
-        self.file = file
-    }
-
-    deinit {
-        if fclose(file) == EOF {
-            print("Error \(errno) closing file")
-        }
+        self.fileWrapper = FileWrapper(file: file)
     }
 
     public func makeAsyncIterator() -> Iterator {
