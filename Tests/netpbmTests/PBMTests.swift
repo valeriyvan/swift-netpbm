@@ -1,9 +1,9 @@
 import XCTest
 @testable import netpbm
 
-final class PBMImageSequenceTests: XCTestCase {
+final class PBMTests: XCTestCase {
 
-    func testRead() async throws {
+    func testReadWrite() async throws {
         let iSeq = try PBMImageSequence(string:
             """
             P1
@@ -24,16 +24,13 @@ final class PBMImageSequenceTests: XCTestCase {
 
             """
         )
-        
+
         var images: [(cols: Int, rows: Int, pixels: [UInt8])] = []
 
-        for try await imageBitIterator in iSeq {
-            var pixels: [UInt8] = []
-            for try await bit in imageBitIterator {
-                pixels.append(UInt8(bit.rawValue))
-            }
+        for try await imageBitSequence in iSeq {
+            let pixels: [UInt8] = try await imageBitSequence.reduce(into: []) { $0.append(UInt8($1.rawValue)) }
             images.append(
-                (cols: imageBitIterator.width, rows: imageBitIterator.height, pixels: pixels)
+                (cols: imageBitSequence.width, rows: imageBitSequence.height, pixels: pixels)
             )
         }
 
@@ -44,12 +41,33 @@ final class PBMImageSequenceTests: XCTestCase {
         XCTAssertEqual(first.rows, 4)
         XCTAssertEqual(first.pixels.count, 5 * 4)
         XCTAssertEqual(first.pixels, [0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1])
-        
+
         let second = images[1]
         XCTAssertEqual(second.cols, 4)
         XCTAssertEqual(second.rows, 4)
         XCTAssertEqual(second.pixels.count, 4 * 4)
         XCTAssertEqual(second.pixels, [0,0,1,1, 0,0,1,1, 0,0,1,1, 0,0,1,1])
+
+        let string = try PBMImageWriter.write(images: images, forcePlane: true)
+        XCTAssertEqual(
+            string,
+            """
+            P1
+            5 4
+            01010
+            10101
+            01010
+            10101
+
+            P1
+            4 4
+            0011
+            0011
+            0011
+            0011
+
+            """
+        )
     }
 
 }
