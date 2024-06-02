@@ -1,0 +1,90 @@
+import Foundation
+
+public enum PbmWriteError: Error {
+    case ioError
+}
+
+public struct PBMImageWriter<Bits: Sequence<UInt8>> {
+
+    public static func write(images: [(cols: Int, rows: Int, pixels: Bits)], forcePlane: Bool) throws -> String {
+        guard let tmpUrl = createTemporaryFile() else {
+            throw PbmWriteError.ioError
+        }
+        try write(images: images, filename: tmpUrl.path, forcePlane: true)
+        let string = try String(contentsOf: tmpUrl)
+        try FileManager.default.removeItem(at: tmpUrl)
+        return string
+    }
+
+    public static func write(images: [(cols: Int, rows: Int, pixels: Bits)], filename: String, forcePlane: Bool) throws {
+        guard let file: UnsafeMutablePointer<FILE> = fopen(filename, "w") else {
+            throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
+        }
+        try write(images: images, file: file, forcePlane: forcePlane)
+        guard fclose(file) != EOF else {
+            throw PbmWriteError.ioError
+        }
+    }
+
+    static func write(images: [(cols: Int, rows: Int, pixels: Bits)], file: UnsafeMutablePointer<FILE>, forcePlane: Bool) throws {
+        let imagesCount = images.count
+        for (i, image) in images.enumerated() {
+            try _pbm_writepbm(
+                file,
+                bits: image.pixels.map { Bit(rawValue: Int($0))! },
+                cols: Int32(image.cols), rows: Int32(image.rows),
+                forcePlain: forcePlane
+            )
+            if i < imagesCount - 1 {
+                guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
+                    throw PbmWriteError.ioError
+                }
+            }
+        }
+    }
+
+}
+
+func _pbm_writepbm(_ file: UnsafeMutablePointer<FILE>, bits: [Bit], cols: Int32, rows: Int32, forcePlain: Bool) throws {
+    try _pbm_writepbminit(file, cols: cols, rows: rows, forcePlain: forcePlain)
+    if forcePlain {
+        try _writePbmBitsPlain(file, bits: bits, cols: cols, rows: rows)
+    } else {
+        fatalError("Not implemented")
+    }
+}
+
+func _pbm_writepbminit(_ file: UnsafeMutablePointer<FILE>, cols: Int32, rows: Int32, forcePlain: Bool) throws {
+    /* For Caller's convenience, we include validating computability of the
+       image dimensions, since Caller may be using them in arithmetic after
+       our return.
+    */
+    try _pbm_validateComputableSize(cols: cols, rows: rows)
+    let magic = String(format: "%c%c\n%d %d\n", PBM_MAGIC1, forcePlain ? PBM_MAGIC2 : RPBM_MAGIC2, cols, rows)
+    guard magic.withCString({ fputs($0, file) }) != EOF else {
+        throw PbmWriteError.ioError
+    }
+}
+
+func _writePbmBitsPlain(_ file: UnsafeMutablePointer<FILE>, bits: [Bit], cols: Int32, rows: Int32) throws {
+    precondition(bits.count == cols * rows)
+    for row in 0..<rows {
+        var charCount = 0
+        for col in 0..<cols {
+            let bit = bits[Int(row * cols + col)]
+            guard putc(Int32(Character(bit == .zero ? "0" : "1").asciiValue!), file) != EOF else {
+                throw PbmWriteError.ioError
+            }
+            charCount += 1
+            if (charCount >= 70 && col < cols - 1) {
+                guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
+                    throw PbmWriteError.ioError
+                }
+                charCount = 0;
+            }
+        }
+        guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
+            throw PbmWriteError.ioError
+        }
+    }
+}
