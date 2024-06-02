@@ -143,7 +143,6 @@ public enum PbmParseError: Error {
     case imageTooLarge
 }
 
-
 // Initialize PBM reading, checking the format
 func _pbm_readpbminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32, rows: Int32, format: Int32) {
     let realFormat = try _pm_readmagicnumber(file)

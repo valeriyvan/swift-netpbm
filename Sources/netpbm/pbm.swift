@@ -17,7 +17,7 @@ public struct PBM {
     // All functions returning pixels follow C ordering for pixels, row by row
 
     // Parse the first image from the file
-    public static func firstImage(filename: String) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
+    public static func firstImage(filename: String) throws -> (cols: Int, rows: Int, pixels: [UInt8]) {
         guard let file: UnsafeMutablePointer<FILE> = fopen(filename, "r") else {
             throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
         }
@@ -29,7 +29,7 @@ public struct PBM {
     }
 
     // Parse the first image from a string
-    public static func firstImage(string: String) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
+    public static func firstImage(string: String) throws -> (cols: Int, rows: Int, pixels: [UInt8]) {
         try string.withCString {
             guard let file: UnsafeMutablePointer<FILE> = fmemopen(UnsafeMutableRawPointer(mutating: $0), strlen($0), "r") else {
                 throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
@@ -43,7 +43,7 @@ public struct PBM {
     }
 
     // Parse all images from the file
-    public static func images(filename: String) throws -> [(rows: Int, cols: Int, pixels: [UInt8])] {
+    public static func images(filename: String) throws -> [(cols: Int, rows: Int, pixels: [UInt8])] {
         guard let file: UnsafeMutablePointer<FILE> = fopen(filename, "r") else {
             throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
         }
@@ -55,7 +55,7 @@ public struct PBM {
     }
 
     // Parse all images from a string
-    public static func images(string: String) throws -> [(rows: Int, cols: Int, pixels: [UInt8])] {
+    public static func images(string: String) throws -> [(cols: Int, rows: Int, pixels: [UInt8])] {
         try string.withCString {
             guard let file: UnsafeMutablePointer<FILE> = fmemopen(UnsafeMutableRawPointer(mutating: $0), strlen($0), "r") else {
                 throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
@@ -69,8 +69,8 @@ public struct PBM {
     }
 
     // Helper function to parse all images from a file pointer
-    private static func images(file: UnsafeMutablePointer<FILE>) throws -> [(rows: Int, cols: Int, pixels: [UInt8])] {
-        var images: [(rows: Int, cols: Int, pixels: [UInt8])] = []
+    private static func images(file: UnsafeMutablePointer<FILE>) throws -> [(cols: Int, rows: Int, pixels: [UInt8])] {
+        var images: [(cols: Int, rows: Int, pixels: [UInt8])] = []
         while true {
             let eof = try _pm_nextimage(file)
             guard !eof else { break }
@@ -81,7 +81,7 @@ public struct PBM {
     }
 
     // Parse a single image from a file pointer
-    private static func image(file: UnsafeMutablePointer<FILE>) throws -> (rows: Int, cols: Int, pixels: [UInt8]) {
+    private static func image(file: UnsafeMutablePointer<FILE>) throws -> (cols: Int, rows: Int, pixels: [UInt8]) {
         let (cols, rows, format) = try _pbm_readpbminit(file) // TODO: test with broken header
         // TODO: test format is as expected
         let capacity = Int(rows * cols)
@@ -94,7 +94,7 @@ public struct PBM {
             }
             initializedCount = capacity
         }
-        return (rows: Int(rows), cols: Int(cols), pixels: pixels)
+        return (cols: Int(cols), rows: Int(rows), pixels: pixels)
     }
 
     // Move to the next image in the file stream
@@ -257,7 +257,7 @@ public struct PBM {
     }
 
     // TODO: get rid of temporary file
-    public static func write(images: [(rows: Int, cols: Int, pixels: [UInt8])], forcePlane: Bool) throws -> String {
+    public static func write(images: [(cols: Int, rows: Int, pixels: [UInt8])], forcePlane: Bool) throws -> String {
         guard let tmpUrl = createTemporaryFile() else {
             throw PBM.PbmParseError.ioError
         }
@@ -267,7 +267,7 @@ public struct PBM {
         return string
     }
 
-    public static func write(images: [(rows: Int, cols: Int, pixels: [UInt8])], filename: String, forcePlane: Bool) throws {
+    public static func write(images: [(cols: Int, rows: Int, pixels: [UInt8])], filename: String, forcePlane: Bool) throws {
         guard let file: UnsafeMutablePointer<FILE> = fopen(filename, "w") else {
             throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
         }
@@ -277,7 +277,7 @@ public struct PBM {
         }
     }
 
-    private static func write(images: [(rows: Int, cols: Int, pixels: [UInt8])], file: UnsafeMutablePointer<FILE>, forcePlane: Bool) throws {
+    private static func write(images: [(cols: Int, rows: Int, pixels: [UInt8])], file: UnsafeMutablePointer<FILE>, forcePlane: Bool) throws {
         let imagesCount = images.count
         for (i, image) in images.enumerated() {
             try _pbm_writepbm(
