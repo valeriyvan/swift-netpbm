@@ -1,8 +1,19 @@
-//
-//  File.swift
-//  
-//
-//  Created by Valeriy Van on 02/06/2024.
-//
-
 import Foundation
+
+// Closes file and deallocated buffer on deinit.
+class FileWrapper {
+    let file: UnsafeMutablePointer<FILE>
+    let buffer: UnsafeMutableRawPointer?
+
+    init(file: UnsafeMutablePointer<FILE>, buffer: UnsafeMutableRawPointer? = nil) {
+        self.file = file
+        self.buffer = buffer
+    }
+
+    deinit {
+        if fclose(file) == EOF {
+            print("Error \(errno) closing file")
+        }
+        buffer?.deallocate()
+    }
+}
