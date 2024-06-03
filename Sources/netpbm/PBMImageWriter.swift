@@ -6,18 +6,22 @@ public enum PbmWriteError: Error {
 
 public struct PBMImageWriter<Bits: Sequence<UInt8>> {
 
-    public static func write(images: [(cols: Int, rows: Int, pixels: Bits)], forcePlane: Bool) throws -> String {
+    // In case of plane output returned value will be data of String in .ascii encoding
+    // (.utf8, obviously, works as well).
+    // In case of raw (binary) output, Data returned shouldn't be used for constructing String
+    // as encoding cannot be defined.
+    public static func write(images: [(cols: Int, rows: Int, pixels: Bits)], forcePlane: Bool) throws -> Data {
         guard let tmpUrl = createTemporaryFile() else {
             throw PbmWriteError.ioError
         }
-        try write(images: images, filename: tmpUrl.path, forcePlane: true)
-        let string = try String(contentsOf: tmpUrl)
+        try write(images: images, pathname: tmpUrl.path, forcePlane: forcePlane)
+        let data = try Data(contentsOf: tmpUrl)
         try FileManager.default.removeItem(at: tmpUrl)
-        return string
+        return data
     }
 
-    public static func write(images: [(cols: Int, rows: Int, pixels: Bits)], filename: String, forcePlane: Bool) throws {
-        guard let file: UnsafeMutablePointer<FILE> = fopen(filename, "w") else {
+    public static func write(images: [(cols: Int, rows: Int, pixels: Bits)], pathname: String, forcePlane: Bool) throws {
+        guard let file: UnsafeMutablePointer<FILE> = fopen(pathname, "w") else {
             throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
         }
         try write(images: images, file: file, forcePlane: forcePlane)
@@ -50,7 +54,7 @@ func _pbm_writepbm(_ file: UnsafeMutablePointer<FILE>, bits: [Bit], cols: Int32,
     if forcePlain {
         try _writePbmBitsPlain(file, bits: bits, cols: cols, rows: rows)
     } else {
-        fatalError("Not implemented")
+        try _writePbmBitsRaw(file, bits: bits, cols: cols, rows: rows)
     }
 }
 
@@ -80,11 +84,37 @@ func _writePbmBitsPlain(_ file: UnsafeMutablePointer<FILE>, bits: [Bit], cols: I
                 guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
                     throw PbmWriteError.ioError
                 }
-                charCount = 0;
+                charCount = 0
             }
         }
         guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
             throw PbmWriteError.ioError
         }
+    }
+}
+
+func _writePbmBitsRaw(_ file: UnsafeMutablePointer<FILE>, bits: [Bit], cols: Int32, rows: Int32) throws {
+    precondition(bits.count == cols * rows)
+    for row in 0..<rows {
+        let startIndex = Int(row * cols)
+        let rowSlice = bits[startIndex ..< startIndex + Int(cols)]
+        try _writePbmRowRaw(file, bits: Array(rowSlice))
+    }
+    guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
+        throw PbmWriteError.ioError
+    }
+}
+
+func _writePbmRowRaw(_ file: UnsafeMutablePointer<FILE>, bits: [Bit]) throws {
+    try _writePackedRawRow(file, packedBits: bits.packed())
+}
+
+// TODO: try using sequence instead of array
+func _writePackedRawRow(_ file: UnsafeMutablePointer<FILE>, packedBits: [UInt8]) throws {
+    let packedByteCt = packedBits.count
+    let writtenByteCt = fwrite(packedBits, 1, packedByteCt, file)
+    if writtenByteCt < packedByteCt {
+        print("I/O error writing packed row to raw PBM file. (Attempted fwrite() of \(packedByteCt) packed bytes; only \(writtenByteCt) got written)")
+        throw PbmWriteError.ioError
     }
 }
