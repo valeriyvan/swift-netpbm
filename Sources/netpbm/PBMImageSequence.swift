@@ -319,7 +319,7 @@ func _pm_nextimage(_ file: UnsafeMutablePointer<FILE>) throws -> Bool {
     var nonWhitespaceFound = false
 
     while !eof && !nonWhitespaceFound {
-        let c = getc(file);
+        let c = getc(file)
         if c == EOF {
             if feof(file) != 0 {
                 eof = true
@@ -354,8 +354,8 @@ func _pbm_readpbmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, format: In
             bitRow.append(try _getbit(file))
         }
     case RPBM_FORMAT:
-        var /*unsigned char*/ item: CChar = 0;
-        bitshift = -1;  item = 0;  /* item's value is meaningless here */
+        var item: CUnsignedChar = 0
+        bitshift = -1  /* item's value is meaningless here */
         for _ in 0..<cols {
             if bitshift == -1 {
                 let byte = _getrawbyte(file)
@@ -368,12 +368,12 @@ func _pbm_readpbmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, format: In
                         throw PbmParseError.internalInconsistency
                     }
                 }
-                item = CChar(_getrawbyte(file)) // TODO: overflow???
+                item = CUnsignedChar(byte)
                 bitshift = 7
             }
-            bitRow.append((item >> bitshift) & 1 == 1 ? .one : .zero)
+            bitRow.append((item >> bitshift) & 1 != 0 ? .one : .zero)
             bitshift -= 1
-          }
+        }
     default:
         throw PbmParseError.internalInconsistency
     }
