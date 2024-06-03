@@ -4,7 +4,7 @@ import XCTest
 final class PBMTests: XCTestCase {
 
     func testReadWrite() async throws {
-        let iSeq = try PBMImageSequence(string:
+        let iSeq = try PBMImageSequence(data:
             """
             P1
             # Image 1: 5x4 checkerboard pattern
@@ -23,12 +23,14 @@ final class PBMTests: XCTestCase {
             0 0 1 1
 
             """
+            .data(using: .utf8)!
         )
 
         var images: [(cols: Int, rows: Int, pixels: [UInt8])] = []
 
         for try await imageBitSequence in iSeq {
-            let pixels: [UInt8] = try await imageBitSequence.reduce(into: []) { $0.append(UInt8($1.rawValue)) }
+            let pixels: [UInt8] = try await imageBitSequence.reduce(into: []) { $0.append(UInt8($1.rawValue))
+            }
             images.append(
                 (cols: imageBitSequence.width, rows: imageBitSequence.height, pixels: pixels)
             )
@@ -36,21 +38,21 @@ final class PBMTests: XCTestCase {
 
         XCTAssertEqual(images.count, 2)
 
-        let first = images[0]
+        var first = images[0]
         XCTAssertEqual(first.cols, 5)
         XCTAssertEqual(first.rows, 4)
         XCTAssertEqual(first.pixels.count, 5 * 4)
         XCTAssertEqual(first.pixels, [0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1])
 
-        let second = images[1]
+        var second = images[1]
         XCTAssertEqual(second.cols, 4)
         XCTAssertEqual(second.rows, 4)
         XCTAssertEqual(second.pixels.count, 4 * 4)
         XCTAssertEqual(second.pixels, [0,0,1,1, 0,0,1,1, 0,0,1,1, 0,0,1,1])
 
-        let string = try PBMImageWriter.write(images: images, forcePlane: true)
+        let data = try PBMImageWriter.write(images: images, forcePlane: true)
         XCTAssertEqual(
-            string,
+            data,
             """
             P1
             5 4
@@ -67,7 +69,37 @@ final class PBMTests: XCTestCase {
             0011
 
             """
+            .data(using: .utf8)
         )
+
+        let binary = try PBMImageWriter.write(images: images, forcePlane: false)
+
+        // Now test that binary image could be read and it's the same
+        let iSeqBinary = try PBMImageSequence(data: binary)
+
+        images = []
+
+        for try await imageBitSequence in iSeqBinary {
+            let pixels: [UInt8] = try await imageBitSequence.reduce(into: []) { $0.append(UInt8($1.rawValue)) }
+            let image = (cols: imageBitSequence.width, rows: imageBitSequence.height, pixels: pixels)
+            print(image)
+            images.append(image)
+        }
+
+        XCTAssertEqual(images.count, 2)
+
+        first = images[0]
+        XCTAssertEqual(first.cols, 5)
+        XCTAssertEqual(first.rows, 4)
+        XCTAssertEqual(first.pixels.count, 5 * 4)
+        XCTAssertEqual(first.pixels, [0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1])
+
+        second = images[1]
+        XCTAssertEqual(second.cols, 4)
+        XCTAssertEqual(second.rows, 4)
+        XCTAssertEqual(second.pixels.count, 4 * 4)
+        XCTAssertEqual(second.pixels, [0,0,1,1, 0,0,1,1, 0,0,1,1, 0,0,1,1])
+
     }
 
 }
