@@ -13,22 +13,6 @@ import Foundation
 
 public struct PBMImageSequence: AsyncSequence {
 
-    // Closes file on deinit.
-    // Allows PBMImageSequence be struct and handle file close.
-    class FileWrapper {
-        let file: UnsafeMutablePointer<FILE>
-
-        init(file: UnsafeMutablePointer<FILE>) {
-            self.file = file
-        }
-
-        deinit {
-            if fclose(file) == EOF {
-                print("Error \(errno) closing file")
-            }
-        }
-    }
-
     public typealias Element = PBMImageBitSequence
     public typealias AsyncIterator = Iterator
 
