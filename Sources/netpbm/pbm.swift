@@ -123,7 +123,7 @@ public struct PBM {
         var nonWhitespaceFound = false
 
         while !eof && !nonWhitespaceFound {
-            let c = getc(file);
+            let c = getc(file)
             if c == EOF {
                 if feof(file) != 0 {
                     eof = true
@@ -190,8 +190,8 @@ public struct PBM {
                 bitRow.append(try _getbit(file))
             }
         case RPBM_FORMAT:
-            var /*unsigned char*/ item: CChar = 0;
-            bitshift = -1;  item = 0;  /* item's value is meaningless here */
+            var item: CUnsignedChar = 0
+            bitshift = -1 /* item's value is meaningless here */
             for _ in 0..<cols {
                 if bitshift == -1 {
                     let byte = _getrawbyte(file)
@@ -204,7 +204,7 @@ public struct PBM {
                             throw PBM.PbmParseError.internalInconsistency
                         }
                     }
-                    item = CChar(_getrawbyte(file)) // TODO: overflow???
+                    item = CUnsignedChar(_getrawbyte(file)) // TODO: overflow???
                     bitshift = 7
                 }
                 bitRow.append((item >> bitshift) & 1 == 1 ? .one : .zero)
@@ -329,7 +329,7 @@ public struct PBM {
                     guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
                         throw PBM.PbmParseError.ioError
                     }
-                    charCount = 0;
+                    charCount = 0
                 }
             }
             guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
