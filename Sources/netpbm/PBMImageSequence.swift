@@ -34,14 +34,17 @@ public struct PBMImageSequence: AsyncSequence {
 
     let fileWrapper: FileWrapper
 
-    public init(string: String) throws {
-        let file = try string.withCString {
-            guard let file: UnsafeMutablePointer<FILE> = fmemopen(UnsafeMutableRawPointer(mutating: $0), strlen($0), "r") else {
+    public init(data: Data) throws {
+        let (file, buffer) = try data.withUnsafeBytes {
+            // Make a copy of $0 otherwise file operations will read deallocated memory
+            let buffer = UnsafeMutableRawPointer.allocate(byteCount: $0.count, alignment: MemoryLayout<UInt8>.alignment)
+            buffer.copyMemory(from: $0.baseAddress!, byteCount: $0.count)
+            guard let file: UnsafeMutablePointer<FILE> = fmemopen(buffer, $0.count, "r") else {
                 throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
             }
-            return file
+            return (file, buffer)
         }
-        self.fileWrapper = FileWrapper(file: file)
+        self.fileWrapper = FileWrapper(file: file, buffer: buffer)
     }
 
     public init(pathname: String) throws {
