@@ -39,7 +39,7 @@ public struct PBMImageWriter<Bits: Sequence<UInt8>> {
                 cols: Int32(image.cols), rows: Int32(image.rows),
                 forcePlain: forcePlane
             )
-            if i < imagesCount - 1 {
+            if i < imagesCount - 1 { // TODO: only do this in plane text mode?
                 guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
                     throw PbmWriteError.ioError
                 }
