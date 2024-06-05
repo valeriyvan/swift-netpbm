@@ -146,7 +146,7 @@ public enum PgmParseError: Error {
 //    case junkWhereBitsShouldBe
 //    case junkWhereUnsignedIntegerShouldBe
 //    case tooBigNumber
-//    case imageTooLarge
+    case imageTooLarge
 }
 
 /* The following definition has nothing to do with the format of a PGM file */
@@ -272,11 +272,11 @@ func _pgm_validateComputableSize(cols: Int32, rows: Int32) throws {
 -----------------------------------------------------------------------------*/
     if cols > Int32.max / Int32(MemoryLayout<Gray>.size) || cols > Int32.max - 2 {
         print("image width \(cols) too large to be processed")
-        throw PbmParseError.imageTooLarge
+        throw PgmParseError.imageTooLarge
     }
     if rows > Int32.max - 2 {
         print("image height \(rows) too large to be processed")
-        throw PbmParseError.imageTooLarge
+        throw PgmParseError.imageTooLarge
     }
 }
 
@@ -301,7 +301,7 @@ func _pgm_validateComputableMaxval(maxVal: Gray) throws {
 
     if maxVal > Int32.max - 1 {
         print("Maxval \(maxVal) is too large to be processed")
-        throw PbmParseError.imageTooLarge
+        throw PgmParseError.imageTooLarge
     }
 }
 
