@@ -10,10 +10,15 @@ let package = Package(
         .executable(name: "example", targets: ["example"]),
         .executable(name: "flipbit", targets: ["flipbit-example"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.1.4")
+    ],
     targets: [
         .target(
             name: "libnetpbm",
-            dependencies: [],
+            dependencies: [
+                .product(name: "Algorithms", package: "swift-algorithms")
+            ],
             exclude: ["libsystem_dummy.c"],
             publicHeadersPath: "importinc",
             cSettings: [
