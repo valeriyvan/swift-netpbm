@@ -111,7 +111,6 @@ public struct PGMImageGraySequence: AsyncSequence {
     }
 }
 
-
 /* Since April 2000, we are capable of reading and generating raw
    (binary) PGM files with maxvals up to 65535.  However, before that
    the maximum (as usually implemented) was 255, and people still want
@@ -446,7 +445,7 @@ func _validateRpgmRow(grayrow: [Gray], cols: Int32, maxVal: Gray) throws {
         for col in 0..<Int(cols) {
             if (grayrow[col] > maxVal) {
                 print("gray value \(grayrow[col]) is greater than maxval (\(maxVal)")
-                throw PgmParseError.wrongFormat
+                throw PgmParseError.wrongFormat // ???
             }
         }
     }
