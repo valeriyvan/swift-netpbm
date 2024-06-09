@@ -98,7 +98,7 @@ func _pgm_writepgmrow(_ file: UnsafeMutablePointer<FILE>, grayrow: [Gray], cols:
 
 func _writepgmrowplain(_ file: UnsafeMutablePointer<FILE>, grayrow: [Gray], cols: Int32, maxVal: Gray) throws {
     var row = ""
-    var lineCount = 0
+    var lineCount = 0 // To avoid loop going quadratic
     for col in 0..<Int(cols) {
         let element = grayrow[col]
         let strElement = String(element)
