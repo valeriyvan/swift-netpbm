@@ -353,7 +353,6 @@ public struct PBM {
            be unprocessable.
         */
         if cols > UInt32.max / 2 { // INT_MAX
-
             print("Number of columns in header is too large (\(cols)). The maximum allowed by the format is \(UInt32.max / 2).")
             throw PBM.PbmParseError.wrongFormat
         }
