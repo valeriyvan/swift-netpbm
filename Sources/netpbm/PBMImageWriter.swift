@@ -80,7 +80,7 @@ func _writePbmBitsPlain(_ file: UnsafeMutablePointer<FILE>, bits: [Bit], cols: I
                 throw PbmWriteError.ioError
             }
             charCount += 1
-            if (charCount >= 70 && col < cols - 1) {
+            if charCount >= 70 && col < cols - 1 {
                 guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
                     throw PbmWriteError.ioError
                 }

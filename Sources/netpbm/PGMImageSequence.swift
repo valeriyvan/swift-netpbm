@@ -441,14 +441,14 @@ func _validateRpgmRow(grayrow: [Gray], cols: Int32, maxVal: Gray) throws {
   simply make sure it uses a sufficiently high maxval on the read function
   call, so this validation never fails.
 -----------------------------------------------------------------------------*/
-    if (maxVal == 255 || maxVal == 65535) {
+    if maxVal == 255 || maxVal == 65535 {
         /* There's no way a sample can be invalid, so we don't need to look at
            the samples individually.
         */
         return
     } else {
         for col in 0..<Int(cols) {
-            if (grayrow[col] > maxVal) {
+            if grayrow[col] > maxVal {
                 print("gray value \(grayrow[col]) is greater than maxval (\(maxVal)")
                 throw PgmParseError.wrongFormat // ???
             }

@@ -325,7 +325,7 @@ public struct PBM {
                     throw PBM.PbmParseError.ioError
                 }
                 charCount += 1
-                if (charCount >= 70 && col < cols - 1) {
+                if charCount >= 70 && col < cols - 1 {
                     guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
                         throw PBM.PbmParseError.ioError
                     }
