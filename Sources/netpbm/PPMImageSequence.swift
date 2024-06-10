@@ -81,7 +81,7 @@ public struct PPMImagePixelSequence: AsyncSequence {
             } else if currentElementIndex < row.count {
                 defer { currentElementIndex += 1 }
                 return row[currentElementIndex]
-            } else if currentRow < rows-1 {
+            } else if currentRow < rows - 1 {
                 row = try _ppm_readppmrow(file, cols: cols, maxVal: maxVal, format: format)
                 currentRow += 1
                 currentElementIndex = 0

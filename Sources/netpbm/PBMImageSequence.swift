@@ -89,7 +89,7 @@ public struct PBMImageBitSequence: AsyncSequence {
             } else if currentBitIndex < rowBits.count {
                 defer { currentBitIndex += 1 }
                 return rowBits[currentBitIndex]
-            } else if currentRow < rows-1 {
+            } else if currentRow < rows - 1 {
                 rowBits = try _pbm_readpbmrow(file, cols: cols, format: format)
                 currentRow += 1
                 currentBitIndex = 0
