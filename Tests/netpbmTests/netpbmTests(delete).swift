@@ -74,7 +74,7 @@ final class netpbmTests: XCTestCase {
                 1 0 1 0
 
                 """
-                          )
+            )
 
         ) { error in
             XCTAssertEqual(error as? PBM.PbmParseError, PBM.PbmParseError.unexpectedEndOfFile)
@@ -100,7 +100,7 @@ final class netpbmTests: XCTestCase {
                 0 0 1 1
 
                 """
-                          )
+            )
         ) { error in
             XCTAssertEqual(error as? PBM.PbmParseError, PBM.PbmParseError.junkWhereBitsShouldBe)
         }
