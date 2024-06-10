@@ -73,7 +73,6 @@ final class PGMTests: XCTestCase {
         )
 
         let binary = try PGMImageWriter.write(images: images, forcePlane: false)
-        try binary.write(to: URL(fileURLWithPath: "/Users/valeriyvan/Desktop/feep.ascii.p5.pgm"), options: .atomic)
         // Now test that binary image could be read and it's the same
         let iSeqBinary = try PGMImageSequence(data: binary)
 
