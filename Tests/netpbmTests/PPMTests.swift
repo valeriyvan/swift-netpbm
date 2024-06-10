@@ -64,7 +64,6 @@ final class PPMTests: XCTestCase {
         )
 
         let binary = try PPMImageWriter.write(images: images, forcePlane: false)
-        try binary.write(to: URL(fileURLWithPath: "/Users/valeriyvan/Desktop/test.p6.ppm"), options: .atomic)
         // Now test that binary image could be read and it's the same
         let iSeqBinary = try PPMImageSequence(data: binary)
 
