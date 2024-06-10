@@ -403,26 +403,31 @@ func _pgm_readpgmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Gr
 func _readRpgmRow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Gray, format: Int32) throws -> [Gray] {
     let bytesPerSample = maxVal < 256 ? 1 : 2 // TODO: !!!
     let bytesPerRow = Int(cols) * bytesPerSample
-
     var grayrow: [Gray] = []
     let rowBuffer = malloc(bytesPerRow)
-    if rowBuffer == nil {
+    guard let rowBuffer else {
         print("Unable to allocate memory for row buffer for \(cols) columns")
         throw PgmParseError.insufficientMemory
+    }
+    defer { free(rowBuffer) }
+    let rc = fread(rowBuffer, 1, bytesPerRow, file)
+    if rc == 0 {
+        print("Error reading row. fread() errno=\(errno) (\(String(cString: strerror(errno)))")
+        throw PgmParseError.ioError
+    } else if rc != bytesPerRow {
+        print("Error reading row. Short read of \(rc) bytes instead of \(bytesPerRow).")
+        throw PgmParseError.ioError
     } else {
-        let rc = fread(rowBuffer, 1, bytesPerRow, file)
-        if rc == 0 {
-            print("Error reading row.  fread() errno=\(errno) (\(String(cString: strerror(errno)))")
-            throw PgmParseError.ioError
-        } else if rc != bytesPerRow {
-            print("Error reading row.  Short read of \(rc) bytes instead of \(bytesPerRow).")
-        } else {
-            for col in 0..<Int(cols) {
-                grayrow.append(rowBuffer!.assumingMemoryBound(to: Gray.self).advanced(by: col).pointee)
+        for col in 0..<Int(cols) {
+            let gray: Gray =
+            switch bytesPerSample {
+                case 1: Gray(rowBuffer.assumingMemoryBound(to: UInt8.self).advanced(by: col).pointee)
+                case 2: Gray(rowBuffer.assumingMemoryBound(to: UInt16.self).advanced(by: col).pointee)
+                default: fatalError("Gray pixels longer then 2 bytes are not supported.")
             }
-            try _validateRpgmRow(grayrow: grayrow, cols: cols, maxVal: maxVal)
+            grayrow.append(gray)
         }
-        free(rowBuffer)
+        try _validateRpgmRow(grayrow: grayrow, cols: cols, maxVal: maxVal)
     }
     return grayrow
 }
