@@ -142,7 +142,7 @@ func _writepgmrowraw(_ file: UnsafeMutablePointer<FILE>, grayrow: [Gray], cols: 
 
     let rc = fwrite(rowBuffer, 1, bytesPerRow, file)
 
-    if (rc < 0) {
+    if rc < 0 {
         print("Error writing row. fwrite() errno=\(errno) (\(String(cString: strerror(errno))))")
         throw PgmWriteError.ioError
     } else {
