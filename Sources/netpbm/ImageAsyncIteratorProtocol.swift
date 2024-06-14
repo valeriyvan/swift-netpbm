@@ -8,7 +8,7 @@ public protocol ImageAsyncIteratorProtocol: AsyncIteratorProtocol {
     init(file: UnsafeMutablePointer<FILE>)
 }
 
-// TODO: would be nice avoidong repeating following function
+// TODO: would be nice to avoid repeating following function
 // extension ImageAsyncIteratorProtocol {
 //     mutating func next() async throws -> (some ImageElementAsyncSequence)? {
 //         let eof = try _pm_nextimage(file)

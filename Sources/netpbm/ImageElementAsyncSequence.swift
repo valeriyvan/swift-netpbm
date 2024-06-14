@@ -15,7 +15,7 @@ public protocol ImageElementAsyncSequence: AsyncSequence {
     init(file: UnsafeMutablePointer<FILE>) throws
 }
 
-// TODO: would be nice provide default implementation for required initializer but that looks impossible
+// TODO: would be nice to provide default implementation for required initializer but that looks impossible
 // extension ImageElementAsyncSequence {
 //     public init(file: UnsafeMutablePointer<FILE>) throws {
 //         self.file = file
