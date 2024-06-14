@@ -1,7 +1,7 @@
 import Foundation
 
 // Closes file and deallocates buffer on deinit.
-class FileWrapper {
+public class FileWrapper {
     let file: UnsafeMutablePointer<FILE>
     let buffer: UnsafeMutableRawPointer?
 
