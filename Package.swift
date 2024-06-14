@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "libnetpbm",
+    platforms: [.macOS(.v10_15)],
     products: [
         .library(name: "libnetpbm", targets: ["libnetpbm"]),
         .library(name: "netpbm", targets: ["netpbm"]), // Swift wrapper over libnetpbm
@@ -63,6 +64,5 @@ let package = Package(
                 "netpbm"
             ]
         )
-
     ]
 )
