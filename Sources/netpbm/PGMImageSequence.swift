@@ -1,113 +1,81 @@
 import Foundation
 
-public struct PGMImageSequence: AsyncSequence {
-
+public struct PGMImageSequence: ImageAsyncSequence {
     public typealias Element = PGMImageGraySequence
-    public typealias AsyncIterator = Iterator
-
-    public struct Iterator: AsyncIteratorProtocol {
-        public let file: UnsafeMutablePointer<FILE>
-
-        public init(file: UnsafeMutablePointer<FILE>) {
-            self.file = file
-        }
-
-        public mutating func next() async throws -> PGMImageGraySequence? {
-            let eof = try _pm_nextimage(file)
-            guard !eof else { return nil }
-            return try PGMImageGraySequence(file: file)
-        }
-    }
+    public typealias AsyncIterator = PGMImageAsyncIterator
 
     public var file: UnsafeMutablePointer<FILE> { fileWrapper.file }
+    public var fileWrapper: FileWrapper
 
-    let fileWrapper: FileWrapper
-
-    public init(data: Data) throws {
-        let (file, buffer) = try data.withUnsafeBytes {
-            // Make a copy of $0 otherwise file operations will read deallocated memory
-            let buffer = UnsafeMutableRawPointer.allocate(byteCount: $0.count, alignment: MemoryLayout<UInt8>.alignment)
-            buffer.copyMemory(from: $0.baseAddress!, byteCount: $0.count)
-            guard let file: UnsafeMutablePointer<FILE> = fmemopen(buffer, $0.count, "r") else {
-                throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
-            }
-            return (file, buffer)
-        }
-        self.fileWrapper = FileWrapper(file: file, buffer: buffer)
+    public init(fileWrapper: FileWrapper) throws {
+        self.fileWrapper = fileWrapper
     }
 
-    public init(pathname: String) throws {
-        guard let file: UnsafeMutablePointer<FILE> = fopen(pathname, "r") else {
-            throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
-        }
-        self.fileWrapper = FileWrapper(file: file)
-    }
-
-    public func makeAsyncIterator() -> Iterator {
-        Iterator(file: file)
+    public func makeAsyncIterator() -> PGMImageAsyncIterator {
+        return PGMImageAsyncIterator(file: file)
     }
 }
 
-public struct PGMImageGraySequence: AsyncSequence {
-    public typealias Element = Gray
-    public typealias AsyncIterator = Iterator
+public struct PGMImageAsyncIterator: ImageAsyncIteratorProtocol {
+    public typealias Element = PGMImageGraySequence
 
-    public struct Iterator: AsyncIteratorProtocol {
-        var currentRow = -1
-        var row: [Gray] = []
-        var currentElementIndex = 0
-        let cols: Int32
-        let rows: Int32
-        let maxVal: Gray
-        let format: Int32
-        let file: UnsafeMutablePointer<FILE>
+    public var file: UnsafeMutablePointer<FILE>
 
-        init(file: UnsafeMutablePointer<FILE>, cols: Int32, rows: Int32, maxVal: Gray, format: Int32) {
-            self.file = file
-            self.cols = cols
-            self.rows = rows
-            self.maxVal = maxVal
-            self.format = format
-        }
-
-        public mutating func next() async throws -> Gray? {
-            if currentRow == -1 {
-                row = try _pgm_readpgmrow(file, cols: cols, maxVal: maxVal, format: format)
-                currentRow = 0
-                currentElementIndex = 0
-                defer { currentElementIndex += 1 }
-                return row[currentElementIndex]
-            } else if currentElementIndex < row.count {
-                defer { currentElementIndex += 1 }
-                return row[currentElementIndex]
-            } else if currentRow < rows - 1 {
-                row = try _pgm_readpgmrow(file, cols: cols, maxVal: maxVal, format: format)
-                currentRow += 1
-                currentElementIndex = 0
-                defer { currentElementIndex += 1 }
-                return row[currentElementIndex]
-            }
-            return nil
-        }
+    public init(file: UnsafeMutablePointer<FILE>) {
+        self.file = file
     }
+
+    public mutating func next() async throws -> PGMImageGraySequence? {
+        let eof = try _pm_nextimage(file)
+        guard !eof else { return nil }
+        return try PGMImageGraySequence(file: file)
+    }
+}
+
+public struct PGMImageGraySequence: ImageElementAsyncSequence {
+    public typealias Element = Gray
+    public typealias AsyncIterator = PGMImageGrayAsyncIterator
 
     public var width: Int { Int(cols) }
     public var height: Int { Int(rows) }
-    public var maxValue: Gray { maxVal }
-    
-    private let file: UnsafeMutablePointer<FILE>
-    private let cols: Int32
-    private let rows: Int32
-    private let maxVal: Gray
-    private let format: Int32
+    public var file: UnsafeMutablePointer<FILE>
+    public var cols: Int32
+    public var rows: Int32
+    public let maxValue: Gray
+    public var format: Int32
 
     public init(file: UnsafeMutablePointer<FILE>) throws {
         self.file = file
-        (cols, rows, maxVal, format) = try _pgm_readpgminit(file)
+        (cols, rows, maxValue, format) = try _pgm_readpgminit(file) // TODO: test with broken header
     }
 
-    public func makeAsyncIterator() -> Iterator {
-        return Iterator(file: file, cols: cols, rows: rows, maxVal: maxVal, format: format)
+    public func makeAsyncIterator() -> PGMImageGrayAsyncIterator {
+        return PGMImageGrayAsyncIterator(file: file, cols: cols, rows: rows, maxVal: maxValue, format: format)
+    }
+}
+
+public struct PGMImageGrayAsyncIterator: ImageElementAsyncIteratorProtocol {
+    public typealias Element = Gray
+
+    public var row: [Gray] = []
+    public var currentRow: Int = -1
+    public var currentElementIndex: Int = 0
+    public var cols: Int32
+    public var rows: Int32
+    public let maxVal: Gray
+    public var format: Int32
+    public var file: UnsafeMutablePointer<FILE>
+
+    init(file: UnsafeMutablePointer<FILE>, cols: Int32, rows: Int32, maxVal: Gray, format: Int32) {
+        self.file = file
+        self.cols = cols
+        self.rows = rows
+        self.maxVal = maxVal
+        self.format = format
+    }
+
+    public mutating func readRow() throws -> [Gray] {
+        try _pgm_readpgmrow(file, cols: cols, maxVal: maxVal, format: format)
     }
 }
 
