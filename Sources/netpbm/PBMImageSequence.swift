@@ -11,110 +11,79 @@ import Foundation
 // UnsafeMutablePointer<FILE> is settled API available everywhere.
 // So it's questionable if FileHandle usage here is beneficial.
 
-public struct PBMImageSequence: AsyncSequence {
-
+public struct PBMImageSequence: ImageAsyncSequence {
     public typealias Element = PBMImageBitSequence
-    public typealias AsyncIterator = Iterator
-
-    public struct Iterator: AsyncIteratorProtocol {
-        public let file: UnsafeMutablePointer<FILE>
-
-        public init(file: UnsafeMutablePointer<FILE>) {
-            self.file = file
-        }
-
-        public mutating func next() async throws -> PBMImageBitSequence? {
-            let eof = try _pm_nextimage(file)
-            guard !eof else { return nil }
-            return try PBMImageBitSequence(file: file)
-        }
-    }
+    public typealias AsyncIterator = PBMImageAsyncIterator
 
     public var file: UnsafeMutablePointer<FILE> { fileWrapper.file }
+    public var fileWrapper: FileWrapper
 
-    let fileWrapper: FileWrapper
-
-    public init(data: Data) throws {
-        let (file, buffer) = try data.withUnsafeBytes {
-            // Make a copy of $0 otherwise file operations will read deallocated memory
-            let buffer = UnsafeMutableRawPointer.allocate(byteCount: $0.count, alignment: MemoryLayout<UInt8>.alignment)
-            buffer.copyMemory(from: $0.baseAddress!, byteCount: $0.count)
-            guard let file: UnsafeMutablePointer<FILE> = fmemopen(buffer, $0.count, "r") else {
-                throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
-            }
-            return (file, buffer)
-        }
-        self.fileWrapper = FileWrapper(file: file, buffer: buffer)
+    public init(fileWrapper: FileWrapper) throws {
+        self.fileWrapper = fileWrapper
     }
 
-    public init(pathname: String) throws {
-        guard let file: UnsafeMutablePointer<FILE> = fopen(pathname, "r") else {
-            throw NSError(domain: URLError.errorDomain, code: URLError.cannotOpenFile.rawValue)
-        }
-        self.fileWrapper = FileWrapper(file: file)
-    }
-
-    public func makeAsyncIterator() -> Iterator {
-        Iterator(file: file)
+    public func makeAsyncIterator() -> PBMImageAsyncIterator {
+        return PBMImageAsyncIterator(file: file)
     }
 }
 
-public struct PBMImageBitSequence: AsyncSequence {
-    public typealias Element = Bit
-    public typealias AsyncIterator = Iterator
+public struct PBMImageAsyncIterator: ImageAsyncIteratorProtocol {
+    public typealias Element = PBMImageBitSequence
 
-    public struct Iterator: AsyncIteratorProtocol {
-        var currentRow = -1
-        var rowBits: [Bit] = []
-        var currentBitIndex = 0
-        let cols: Int32
-        let rows: Int32
-        let format: Int32
-        let file: UnsafeMutablePointer<FILE>
+    public var file: UnsafeMutablePointer<FILE>
 
-        init(file: UnsafeMutablePointer<FILE>, cols: Int32, rows: Int32, format: Int32) {
-            self.file = file
-            self.cols = cols
-            self.rows = rows
-            self.format = format
-        }
-
-        public mutating func next() async throws -> Bit? {
-            if currentRow == -1 {
-                rowBits = try _pbm_readpbmrow(file, cols: cols, format: format)
-                currentRow = 0
-                currentBitIndex = 0
-                defer { currentBitIndex += 1 }
-                return rowBits[currentBitIndex]
-            } else if currentBitIndex < rowBits.count {
-                defer { currentBitIndex += 1 }
-                return rowBits[currentBitIndex]
-            } else if currentRow < rows - 1 {
-                rowBits = try _pbm_readpbmrow(file, cols: cols, format: format)
-                currentRow += 1
-                currentBitIndex = 0
-                defer { currentBitIndex += 1 }
-                return rowBits[currentBitIndex]
-            }
-            return nil
-        }
+    public init(file: UnsafeMutablePointer<FILE>) {
+        self.file = file
     }
+
+    public mutating func next() async throws -> PBMImageBitSequence? {
+        let eof = try _pm_nextimage(file)
+        guard !eof else { return nil }
+        return try PBMImageBitSequence(file: file)
+    }
+}
+
+public struct PBMImageBitSequence: ImageElementAsyncSequence {
+    public typealias Element = Bit
+    public typealias AsyncIterator = PBMImageBitAsyncIterator
 
     public var width: Int { Int(cols) }
     public var height: Int { Int(rows) }
-
-    private let file: UnsafeMutablePointer<FILE>
-    private let cols: Int32
-    private let rows: Int32
-    private let format: Int32
+    public var file: UnsafeMutablePointer<FILE>
+    public var cols: Int32
+    public var rows: Int32
+    public var format: Int32
 
     public init(file: UnsafeMutablePointer<FILE>) throws {
         self.file = file
         (cols, rows, format) = try _pbm_readpbminit(file) // TODO: test with broken header
     }
 
-    public func makeAsyncIterator() -> Iterator {
-        return Iterator(file: file, cols: cols, rows: rows, format: format)
+    public func makeAsyncIterator() -> PBMImageBitAsyncIterator {
+        return PBMImageBitAsyncIterator(file: file, cols: cols, rows: rows, format: format)
+    }
+}
+
+public struct PBMImageBitAsyncIterator: ImageElementAsyncIteratorProtocol {
+    public typealias Element = Bit
+
+    public var row: [Bit] = []
+    public var currentRow: Int = -1
+    public var currentElementIndex: Int = 0
+    public var cols: Int32
+    public var rows: Int32
+    public var format: Int32
+    public var file: UnsafeMutablePointer<FILE>
+
+    init(file: UnsafeMutablePointer<FILE>, cols: Int32, rows: Int32, format: Int32) {
+        self.file = file
+        self.cols = cols
+        self.rows = rows
+        self.format = format
+    }
+
+    public mutating func readRow() throws -> [Bit] {
+        try _pbm_readpbmrow(file, cols: cols, format: format)
     }
 }
 
