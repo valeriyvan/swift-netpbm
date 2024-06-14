@@ -104,18 +104,6 @@ public struct PGMImageGrayAsyncIterator: ImageElementAsyncIteratorProtocol {
 let PGM_OVERALLMAXVAL: UInt32 = 65535
 let PGM_MAXMAXVAL: UInt32 = 255
 
-public enum PgmParseError: Error {
-    case wrongFormat // header is wrong
-    case ioError
-    case internalInconsistency
-    case insufficientMemory
-//    case unexpectedEndOfFile
-//    case junkWhereBitsShouldBe
-//    case junkWhereUnsignedIntegerShouldBe
-//    case tooBigNumber
-    case imageTooLarge
-}
-
 /* The following definition has nothing to do with the format of a PGM file */
 public typealias Gray = UInt32
 
@@ -150,16 +138,16 @@ func _pgm_readpgminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32
             (cols, rows, maxVal) = try _pgm_readpgminitrest(file)
         case PPM_TYPE:
             print("Input file is a PPM, which this program cannot process. You may want to convert it to PGM with 'ppmtopgm'.")
-            throw PgmParseError.wrongFormat
+            throw ParseError.wrongFormat
         case PAM_TYPE:
             (cols, rows, maxVal, format) = try _pnm_readpaminitrestaspnm(file)
             if PAM_FORMAT_TYPE(format) != PGM_TYPE {
                 print("Format of PAM input is not consistent with PGM")
-                throw PgmParseError.wrongFormat
+                throw ParseError.wrongFormat
             }
         default:
             print("bad magic number \(String(format: "0x%x", realFormat)) - not a PPM, PGM, PBM, or PAM file")
-            throw PgmParseError.wrongFormat
+            throw ParseError.wrongFormat
     }
     try _pgm_validateComputableSize(cols: cols, rows: rows)
 
@@ -175,11 +163,11 @@ func _pgm_readpgminitrest(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: I
     let maxVal = try _pm_getuint(file)
     if maxVal > PGM_OVERALLMAXVAL {
         print("maxVal of input image \(maxVal) is too large. The maximum allowed by the format is \(PGM_OVERALLMAXVAL)")
-        throw PgmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     if maxVal == 0 {
         print("maxVal of input image is zero.")
-        throw PgmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     return (cols: cols, rows: rows, maxVal: maxVal)
 }
@@ -216,7 +204,7 @@ func _pnm_readpaminitrestaspnm(_ file: UnsafeMutablePointer<FILE>) throws -> (co
         RPGM_FORMAT
     default:
         print("Cannot treat PAM image as PPM or PGM, because its depth \(pam.depth) is not 1 or 3.")
-        throw PgmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     return (cols: pam.width, rows: pam.height, maxVal: Gray(pam.maxVal), format: format)
 */
@@ -239,11 +227,11 @@ func _pgm_validateComputableSize(cols: Int32, rows: Int32) throws {
 -----------------------------------------------------------------------------*/
     if cols > Int32.max / Int32(MemoryLayout<Gray>.size) || cols > Int32.max - 2 {
         print("image width \(cols) too large to be processed")
-        throw PgmParseError.imageTooLarge
+        throw ParseError.imageTooLarge
     }
     if rows > Int32.max - 2 {
         print("image height \(rows) too large to be processed")
-        throw PgmParseError.imageTooLarge
+        throw ParseError.imageTooLarge
     }
 }
 
@@ -268,7 +256,7 @@ func _pgm_validateComputableMaxval(maxVal: Gray) throws {
 
     if maxVal > Int32.max - 1 {
         print("Maxval \(maxVal) is too large to be processed")
-        throw PgmParseError.imageTooLarge
+        throw ParseError.imageTooLarge
     }
 }
 
@@ -350,7 +338,7 @@ func _pgm_readpgmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Gr
             let val =  try _pm_getuint(file)
             guard val <= maxVal else {
                 print("value out of bounds (\(val) > \(maxVal)")
-                throw PgmParseError.wrongFormat // ???
+                throw ParseError.wrongFormat // ???
             }
             grayrow.append(val)
         }
@@ -364,7 +352,7 @@ func _pgm_readpgmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Gr
         // return _readPbmRow(file, cols: cols, maxVal: maxVal, format: format) // ??? should be
     default:
         print("can't happen")
-        throw PgmParseError.internalInconsistency
+        throw ParseError.internalInconsistency
     }
 }
 
@@ -375,16 +363,16 @@ func _readRpgmRow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Gray,
     let rowBuffer = malloc(bytesPerRow)
     guard let rowBuffer else {
         print("Unable to allocate memory for row buffer for \(cols) columns")
-        throw PgmParseError.insufficientMemory
+        throw ParseError.insufficientMemory
     }
     defer { free(rowBuffer) }
     let rc = fread(rowBuffer, 1, bytesPerRow, file)
     if rc == 0 {
         print("Error reading row. fread() errno=\(errno) (\(String(cString: strerror(errno)))")
-        throw PgmParseError.ioError
+        throw ParseError.ioError
     } else if rc != bytesPerRow {
         print("Error reading row. Short read of \(rc) bytes instead of \(bytesPerRow).")
-        throw PgmParseError.ioError
+        throw ParseError.ioError
     } else {
         for col in 0..<Int(cols) {
             let gray: Gray =
@@ -418,7 +406,7 @@ func _validateRpgmRow(grayrow: [Gray], cols: Int32, maxVal: Gray) throws {
         for col in 0..<Int(cols) {
             if grayrow[col] > maxVal {
                 print("gray value \(grayrow[col]) is greater than maxval (\(maxVal)")
-                throw PgmParseError.wrongFormat // ???
+                throw ParseError.wrongFormat // ???
             }
         }
     }

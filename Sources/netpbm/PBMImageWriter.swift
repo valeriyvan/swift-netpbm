@@ -1,9 +1,5 @@
 import Foundation
 
-public enum PbmWriteError: Error {
-    case ioError
-}
-
 public struct PBMImageWriter<Bits: Sequence<UInt8>> {
 
     // In case of plane output returned value will be data of String in .ascii encoding
@@ -12,7 +8,7 @@ public struct PBMImageWriter<Bits: Sequence<UInt8>> {
     // as encoding cannot be defined.
     public static func write(images: [(cols: Int, rows: Int, pixels: Bits)], forcePlane: Bool) throws -> Data {
         guard let tmpUrl = createTemporaryFile() else {
-            throw PbmWriteError.ioError
+            throw WriteError.ioError
         }
         try write(images: images, pathname: tmpUrl.path, forcePlane: forcePlane)
         let data = try Data(contentsOf: tmpUrl)
@@ -26,7 +22,7 @@ public struct PBMImageWriter<Bits: Sequence<UInt8>> {
         }
         try write(images: images, file: file, forcePlane: forcePlane)
         guard fclose(file) != EOF else {
-            throw PbmWriteError.ioError
+            throw WriteError.ioError
         }
     }
 
@@ -41,7 +37,7 @@ public struct PBMImageWriter<Bits: Sequence<UInt8>> {
             )
             if i < imagesCount - 1 { // TODO: only do this in plane text mode?
                 guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
-                    throw PbmWriteError.ioError
+                    throw WriteError.ioError
                 }
             }
         }
@@ -66,7 +62,7 @@ func _pbm_writepbminit(_ file: UnsafeMutablePointer<FILE>, cols: Int32, rows: In
     try _pbm_validateComputableSize(cols: cols, rows: rows)
     let magic = String(format: "%c%c\n%d %d\n", PBM_MAGIC1, forcePlain ? PBM_MAGIC2 : RPBM_MAGIC2, cols, rows)
     guard magic.withCString({ fputs($0, file) }) != EOF else {
-        throw PbmWriteError.ioError
+        throw WriteError.ioError
     }
 }
 
@@ -77,18 +73,18 @@ func _writePbmBitsPlain(_ file: UnsafeMutablePointer<FILE>, bits: [Bit], cols: I
         for col in 0..<cols {
             let bit = bits[Int(row * cols + col)]
             guard putc(Int32(Character(bit == .zero ? "0" : "1").asciiValue!), file) != EOF else {
-                throw PbmWriteError.ioError
+                throw WriteError.ioError
             }
             charCount += 1
             if charCount >= 70 && col < cols - 1 {
                 guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
-                    throw PbmWriteError.ioError
+                    throw WriteError.ioError
                 }
                 charCount = 0
             }
         }
         guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
-            throw PbmWriteError.ioError
+            throw WriteError.ioError
         }
     }
 }
@@ -101,7 +97,7 @@ func _writePbmBitsRaw(_ file: UnsafeMutablePointer<FILE>, bits: [Bit], cols: Int
         try _writePbmRowRaw(file, bits: Array(rowSlice))
     }
     guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
-        throw PbmWriteError.ioError
+        throw WriteError.ioError
     }
 }
 
@@ -115,6 +111,6 @@ func _writePackedRawRow(_ file: UnsafeMutablePointer<FILE>, packedBits: [UInt8])
     let writtenByteCt = fwrite(packedBits, 1, packedByteCt, file)
     if writtenByteCt < packedByteCt {
         print("I/O error writing packed row to raw PBM file. (Attempted fwrite() of \(packedByteCt) packed bytes; only \(writtenByteCt) got written)")
-        throw PbmWriteError.ioError
+        throw WriteError.ioError
     }
 }
