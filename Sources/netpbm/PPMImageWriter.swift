@@ -1,10 +1,5 @@
 import Foundation
 
-public enum PpmWriteError: Error {
-    case ioError
-    case wrongMaxVal
-}
-
 public struct PPMImageWriter {
     // In case of plane output returned value will be data of String in .ascii encoding
     // (.utf8, obviously, works as well).
@@ -13,7 +8,7 @@ public struct PPMImageWriter {
     public static func write(images: [(cols: Int, rows: Int, maxValue: Pixval, pixels: [Pixel])], forcePlane: Bool) throws -> Data {
         assert(images.allSatisfy { image in image.pixels.allSatisfy { $0.r <= image.maxValue && $0.g <= image.maxValue && $0.b <= image.maxValue } })
         guard let tmpUrl = createTemporaryFile() else {
-            throw PpmWriteError.ioError
+            throw WriteError.ioError
         }
         try write(images: images, pathname: tmpUrl.path, forcePlane: forcePlane)
         let data = try Data(contentsOf: tmpUrl)
@@ -27,7 +22,7 @@ public struct PPMImageWriter {
         }
         try write(images: images, file: file, forcePlane: forcePlane)
         guard fclose(file) != EOF else {
-            throw PpmWriteError.ioError
+            throw WriteError.ioError
         }
     }
 
@@ -43,7 +38,7 @@ public struct PPMImageWriter {
             )
             if i < imagesCount - 1 { // TODO: only do this in plane text mode?
                 guard putc(Int32(Character("\n").asciiValue!), file) != EOF else {
-                    throw PpmWriteError.ioError
+                    throw WriteError.ioError
                 }
             }
         }
@@ -76,11 +71,11 @@ func _ppm_writeppminit(_ file: UnsafeMutablePointer<FILE>, cols: Int32, rows: In
     try _pgm_validateComputableMaxval(maxVal: maxVal)
     if maxVal > PPM_OVERALLMAXVAL && !plainFormat {
         print("Too-large maxval passed to ppm_writeppminit(): \(maxVal). Maximum allowed by the PPM format is \(PPM_OVERALLMAXVAL).")
-        throw PpmWriteError.wrongMaxVal
+        throw WriteError.wrongMaxVal
     }
     let magic = String(format: "%c%c\n%d %d\n%d\n", PPM_MAGIC1, plainFormat || maxVal >= 1<<16 ? PPM_MAGIC2 : RPPM_MAGIC2, cols, rows, maxVal)
     guard magic.withCString({ fputs($0, file) }) != EOF else {
-        throw PpmWriteError.ioError
+        throw WriteError.ioError
     }
 }
 
@@ -91,7 +86,7 @@ func _ppm_writeppmrowraw(_ file: UnsafeMutablePointer<FILE>, pixelrow: ArraySlic
     defer { buffer.deallocate() }
     guard fwrite(buffer.baseAddress!, 1, buffer.count, file) == buffer.count else {
         print("Error writing row. fwrite() errno=\(errno) (\(String(cString: strerror(errno)))")
-        throw PpmWriteError.ioError
+        throw WriteError.ioError
     }
 }
 
@@ -117,7 +112,7 @@ func _ppm_writeppmrowplain(_ file: UnsafeMutablePointer<FILE>, pixelrow: ArraySl
     }
     try row.withCString {
         guard fputs($0, file) != EOF else {
-            throw PgmParseError.ioError
+            throw WriteError.ioError
         }
     }
 }

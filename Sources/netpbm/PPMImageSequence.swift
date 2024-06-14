@@ -80,19 +80,6 @@ public struct PPMImagePixelAsyncIterator: ImageElementAsyncIteratorProtocol {
     }
 }
 
-public enum PpmParseError: Error {
-    case wrongFormat // header is wrong
-    case ioError
-//    case internalInconsistency
-    case insufficientMemory
-    case unexpectedEndOfFile
-//    case junkWhereBitsShouldBe
-//    case junkWhereUnsignedIntegerShouldBe
-//    case tooBigNumber
-    case imageTooLarge
-    case badPixelValue
-}
-
 let PPM_OVERALLMAXVAL = PGM_OVERALLMAXVAL
 let PPM_MAXMAXVAL = PGM_MAXMAXVAL
 
@@ -126,7 +113,7 @@ func _ppm_readppminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32
         (cols, rows, maxVal, format) = try _pnm_readpaminitrestaspnm(file)
     default:
         print("bad magic number \(String(format: "0x%x", realFormat)) - not a PPM, PGM, PBM, or PAM file")
-        throw PpmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     try _ppm_validateComputableSize(cols: cols, rows: rows)
 
@@ -156,11 +143,11 @@ func _ppm_validateComputableSize(cols: Int32, rows: Int32) throws {
 -----------------------------------------------------------------------------*/
     if cols > Int32.max / (Int32(MemoryLayout<Pixval>.size) * 3) || cols > Int32.max - 2 {
         print("image width (\(cols) too large to be processed")
-        throw PpmParseError.imageTooLarge
+        throw ParseError.imageTooLarge
     }
     if rows > Int32.max - 2 {
         print("image height (\(rows) too large to be processed")
-        throw PpmParseError.imageTooLarge
+        throw ParseError.imageTooLarge
     }
 }
 
@@ -187,7 +174,7 @@ func _ppm_readppmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Pi
         // return try _readPbmRow(file, cols: cols, maxVal: maxVal, format: format)
     default:
         print("Invalid format code")
-        throw PpmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
 }
 
@@ -200,15 +187,15 @@ func _readPpmRow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Pixval
         let b: Pixval = try _pm_getuint(file)
         if r > maxVal {
             print("Red sample value \(r) is greater than maxval (\(maxVal)")
-            throw PpmParseError.wrongFormat // ???
+            throw ParseError.wrongFormat // ???
         }
         if g > maxVal {
             print("Green sample value \(g) is greater than maxval (\(maxVal)")
-            throw PpmParseError.wrongFormat // ???
+            throw ParseError.wrongFormat // ???
         }
         if b > maxVal {
             print("Blue sample value \(b) is greater than maxval (\(maxVal)")
-            throw PpmParseError.wrongFormat // ???
+            throw ParseError.wrongFormat // ???
         }
         row.append(Pixel(r: r, g: g, b: b))
     }
@@ -222,24 +209,24 @@ func _readRppmRow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Pixva
     let rowBuffer = malloc(bytesPerRow)
     guard let rowBuffer else {
         print("Unable to allocate memory for row buffer for \(cols) columns")
-        throw PpmParseError.insufficientMemory
+        throw ParseError.insufficientMemory
     }
     defer { free(rowBuffer) }
 
     let rc = fread(rowBuffer, 1, bytesPerRow, file)
     guard feof(file) != EOF else {
         print("Unexpected EOF reading row of PPM image.")
-        throw PpmParseError.unexpectedEndOfFile
+        throw ParseError.unexpectedEndOfFile
     }
     guard ferror(file) == 0 else {
         print("Error reading row.  fread() errno=\(errno) (\(String(cString: strerror(errno)))")
-        throw PpmParseError.ioError
+        throw ParseError.ioError
     }
 
     let bytesRead = rc
     guard bytesRead == bytesPerRow else {
         print("Error reading row.  Short read of \(bytesRead) bytes instead of \(bytesPerRow)")
-        throw PpmParseError.ioError
+        throw ParseError.ioError
     }
     let row = try _interpRasterRowRaw(rowBuffer: rowBuffer, cols: cols, bytesPerSample: bytesPerSample)
     try _validateRppmRow(row: row, cols: cols, maxVal: maxVal)
@@ -293,15 +280,15 @@ func _validateRppmRow(row: [Pixel], cols: Int32, maxVal: Pixval) throws {
         for pixel in row {
             if pixel.r > maxVal {
                 print("Red sample value \(pixel.r) is greater than maxval (\(maxVal))")
-                throw PpmParseError.badPixelValue
+                throw ParseError.badPixelValue
             }
             else if pixel.g > maxVal {
                 print("Green sample value \(pixel.g) is greater than maxval (\(maxVal))")
-                throw PpmParseError.badPixelValue
+                throw ParseError.badPixelValue
             }
             else if pixel.b > maxVal {
                 print("Blue sample value \(pixel.b) is greater than maxval (\(maxVal))")
-                throw PpmParseError.badPixelValue
+                throw ParseError.badPixelValue
             }
         }
     }

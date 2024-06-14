@@ -87,18 +87,6 @@ public struct PBMImageBitAsyncIterator: ImageElementAsyncIteratorProtocol {
     }
 }
 
-public enum PbmParseError: Error {
-    case wrongFormat // header is wrong
-    case ioError
-    case internalInconsistency
-    case insufficientMemory
-    case unexpectedEndOfFile
-    case junkWhereBitsShouldBe
-    case junkWhereUnsignedIntegerShouldBe
-    case tooBigNumber
-    case imageTooLarge
-}
-
 // Initialize PBM reading, checking the format
 func _pbm_readpbminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32, rows: Int32, format: Int32) {
     let realFormat = try _pm_readmagicnumber(file)
@@ -114,7 +102,7 @@ func _pbm_readpbminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32
             'pamthreshold | pamtopnm'
             """
         )
-        throw PbmParseError.wrongFormat
+        throw ParseError.wrongFormat
     case PPM_TYPE:
             print("""
                 The input file is a PPM, not a PBM.  You may want to \
@@ -122,7 +110,7 @@ func _pbm_readpbminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32
                 'pamtopnm'
                 """
             )
-            throw PbmParseError.wrongFormat
+            throw ParseError.wrongFormat
     case PAM_TYPE:
             print("""
                 The input file is a PAM, not a PBM.  \
@@ -130,10 +118,10 @@ func _pbm_readpbminit(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: Int32
                 to PBM with 'pamtopnm'
                 """
             )
-            throw PbmParseError.wrongFormat
+            throw ParseError.wrongFormat
     default:
         print("bad magic number \(String(format: "0x%x", realFormat)) - not a PPM, PGM, PBM, or PAM file")
-        throw PbmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     try _pbm_validateComputableSize(cols: cols, rows: rows)
     return (cols: cols, rows: rows, format: realFormat)
@@ -156,11 +144,11 @@ func _pbm_readpbminitrest(_ file: UnsafeMutablePointer<FILE>) throws -> (cols: I
     if cols > UInt32.max / 2 { // INT_MAX
 
         print("Number of columns in header is too large (\(cols)). The maximum allowed by the format is \(UInt32.max / 2).")
-        throw PbmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     if rows > UInt32.max / 2 { // INT_MAX
         print("Number of rows in header is too large (\(rows)). The maximum allowed by the format is \(UInt32.max / 2).")
-        throw PbmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     return (cols: Int32(cols), rows: Int32(rows))
 }
@@ -175,7 +163,7 @@ func _pm_readmagicnumber(_ file: UnsafeMutablePointer<FILE>) throws -> Int32 {
             Most often, this means your input file is empty.
             """
         )
-        throw PbmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     let secondChar = getc(file)
     guard secondChar != EOF else {
@@ -185,7 +173,7 @@ func _pm_readmagicnumber(_ file: UnsafeMutablePointer<FILE>) throws -> Int32 {
             read as 0x%02x).
             """
         )
-        throw PbmParseError.wrongFormat
+        throw ParseError.wrongFormat
     }
     return firstChar * 256 + secondChar
 }
@@ -213,7 +201,7 @@ func _pm_getuint(_ file: UnsafeMutablePointer<FILE>) throws -> UInt32 {
 
     if ch < Character("0").asciiValue! || ch > Character("9").asciiValue! {
         print("junk in file where an unsigned integer should be")
-        throw PbmParseError.junkWhereUnsignedIntegerShouldBe // TODO: caller should throw exact error
+        throw ParseError.junkWhereUnsignedIntegerShouldBe // TODO: caller should throw exact error
     }
 
     var i: Int32 = 0
@@ -222,14 +210,14 @@ func _pm_getuint(_ file: UnsafeMutablePointer<FILE>) throws -> UInt32 {
 
         if i > Int32.max / 10 {
             print("ASCII decimal integer in file is too large to be processed.")
-            throw PbmParseError.tooBigNumber // TODO: caller should throw exact error
+            throw ParseError.tooBigNumber // TODO: caller should throw exact error
         }
 
         i *= 10
 
         if i > Int32.max - digitVal {
             print("ASCII decimal integer in file is too large to be processed.")
-            throw PbmParseError.tooBigNumber // TODO: caller should throw exact error
+            throw ParseError.tooBigNumber // TODO: caller should throw exact error
         }
 
         i += digitVal
@@ -254,11 +242,11 @@ func _pbm_validateComputableSize(cols: Int32, rows: Int32) throws {
 -----------------------------------------------------------------------------*/
     if cols > Int32.max - 10 {
         print("image width \(cols) too large to be processed")
-        throw PbmParseError.imageTooLarge
+        throw ParseError.imageTooLarge
     }
     if rows > Int32.max - 10 {
         print("image height \(rows) too large to be processed", rows)
-        throw PbmParseError.imageTooLarge
+        throw ParseError.imageTooLarge
     }
 }
 
@@ -294,7 +282,7 @@ func _pm_nextimage(_ file: UnsafeMutablePointer<FILE>) throws -> Bool {
                 eof = true
             } else {
                 print("File error on getc() to position to image.")
-                throw PbmParseError.ioError
+                throw ParseError.ioError
             }
         } else {
             if isspace(c) == 0 {
@@ -306,7 +294,7 @@ func _pm_nextimage(_ file: UnsafeMutablePointer<FILE>) throws -> Bool {
                 let rc = ungetc(c, file)
                 if rc == EOF {
                     print("File error doing ungetc() to position to image.")
-                    throw PbmParseError.ioError
+                    throw ParseError.ioError
                 }
             }
         }
@@ -330,11 +318,11 @@ func _pbm_readpbmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, format: In
                 let byte = _getrawbyte(file)
                 guard byte != EOF else {
                     if feof(file) != 0 {
-                        throw PbmParseError.unexpectedEndOfFile
+                        throw ParseError.unexpectedEndOfFile
                     } else if ferror(file) != 0 {
-                        throw PbmParseError.ioError
+                        throw ParseError.ioError
                     } else {
-                        throw PbmParseError.internalInconsistency
+                        throw ParseError.internalInconsistency
                     }
                 }
                 item = CUnsignedChar(byte)
@@ -344,7 +332,7 @@ func _pbm_readpbmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, format: In
             bitshift -= 1
         }
     default:
-        throw PbmParseError.internalInconsistency
+        throw ParseError.internalInconsistency
     }
     return bitRow
 }
@@ -360,14 +348,14 @@ func _getbit(_ file: UnsafeMutablePointer<FILE>) throws -> Bit {
     repeat {
         ch = _pm_getc(file)
         guard ch != EOF else {
-            throw PbmParseError.unexpectedEndOfFile
+            throw ParseError.unexpectedEndOfFile
         }
     } while ch == Character(" ").asciiValue! || ch == Character("\t").asciiValue! || ch == Character("\n").asciiValue! || ch == Character("\r").asciiValue!
 
     switch ch {
     case Int32(Character("0").asciiValue!): return .zero
     case Int32(Character("1").asciiValue!): return .one
-    default: throw PbmParseError.junkWhereBitsShouldBe
+    default: throw ParseError.junkWhereBitsShouldBe
     }
 }
 
