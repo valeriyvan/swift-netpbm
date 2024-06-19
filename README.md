@@ -1,6 +1,6 @@
 # swift-netpbm
 
-This Swift package vends C `libnetpbm` library for image manipulation as `libnetpbm` product. While the `libnetpbm` from the package is fully functional, it is not recommended for direct use in Swift due to compatibility issues. The original `libnetpbm` library is written in a way that does not integrate well with Swift. If there is an error while parsing an image file or during input-output operations, the library may call `exit` or use `longjump`, depending on its initialization. An `exit` call will cause the app to terminate abruptly, resembling a crash. Utilizing `longjump` in Swift results in undefined behavior.
+This Swift package vends C `libnetpbm` library for image manipulation as `libnetpbm` product. While the `libnetpbm` from the package is fully functional, it is not recommended for direct use in Swift due to compatibility issues. The original `libnetpbm` library is written in a way that does not integrate well with Swift. If there is an error while parsing an image file or during input-output operations, the library may call `exit` or use `longjmp`, depending on its initialization. An `exit` call will cause the app to terminate abruptly, resembling a crash. Utilizing [`longjmp` in Swift results in undefined behavior](https://forums.swift.org/t/on-the-road-to-swift-6/32862/146?page=8).
 
 Porting C `libnetpbm` into Swift is work in progress and not yet ready to be used.
 
