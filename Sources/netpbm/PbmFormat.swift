@@ -10,3 +10,7 @@ let PBM_TYPE: Int32 = PBM_FORMAT
 func PBM_FORMAT_TYPE(_ f: Int32) -> Int32 {
     f == PBM_FORMAT || f == RPBM_FORMAT ? PBM_TYPE : -1
 }
+
+// In PBM format, black is represented as "ink on" (1) as opposed to the usual "light on" (0)
+let PBM_BLACK: Int32 = 1
+let PBM_WHITE: Int32 = 0
