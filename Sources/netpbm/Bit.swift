@@ -1,6 +1,6 @@
 public enum Bit: Int {
-    case zero
-    case one
+    case zero = 0
+    case one = 1
 }
 
 public extension Bit {
