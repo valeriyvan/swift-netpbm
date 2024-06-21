@@ -3,7 +3,7 @@ import XCTest
 
 final class PAMTests: XCTestCase {
 
-    func testReadWrite() async throws {
+    func testReadPBMPlain() async throws {
         let iSeq = try PAMImageSequence(data:
             """
             P1
@@ -49,6 +49,39 @@ final class PAMTests: XCTestCase {
         XCTAssertEqual(second.rows, 4)
         XCTAssertEqual(second.pixels.count, 4 * 4)
         XCTAssertEqual(second.pixels, [1,1,0,0, 1,1,0,0, 1,1,0,0, 1,1,0,0])
+    }
+
+    func testReadPBMBinary() async throws {
+        let iSeq = try PAMImageSequence(data:
+            """
+            P4
+            # Image 1: 5x4 checkerboard pattern
+            5 4
+
+            """
+            .data(using: .utf8)!
+            + Data([0b01010000, 0b10101000, 0b01010000, 0b10101000] as [UInt8])
+        )
+
+        var images: [(cols: Int, rows: Int, pixels: [Sample])] = []
+
+        for try await imageElementSequence in iSeq {
+            let pixels: [Sample] = try await imageElementSequence.reduce(into: []) { $0.append(contentsOf: $1)
+            }
+            images.append(
+                (cols: imageElementSequence.width, rows: imageElementSequence.height, pixels: pixels)
+            )
+        }
+
+        XCTAssertEqual(images.count, 1)
+
+        let first = images[0]
+        XCTAssertEqual(first.cols, 5)
+        XCTAssertEqual(first.rows, 4)
+        XCTAssertEqual(first.pixels.count, 5 * 4)
+        XCTAssertEqual(first.pixels, [1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0])
+    }
+}
 
 /*
         let data = try PBMImageWriter.write(images: images, forcePlane: true)
@@ -100,7 +133,6 @@ final class PAMTests: XCTestCase {
         XCTAssertEqual(second.pixels.count, 4 * 4)
         XCTAssertEqual(second.pixels, [0,0,1,1, 0,0,1,1, 0,0,1,1, 0,0,1,1])
 */
-    }
 
 //    func testImagesFromStringMissingBitsThrows() async throws {
 //        let imageSequence = try PBMImageSequence(data:
@@ -185,4 +217,3 @@ final class PAMTests: XCTestCase {
 //        }
 //    }
 
-}
