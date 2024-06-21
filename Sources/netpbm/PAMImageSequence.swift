@@ -611,7 +611,7 @@ func _pbm_readpbmrow_packed(_ file: UnsafeMutablePointer<FILE>, cols: Int32, for
     case RPBM_FORMAT:
         let byteCount = _pbm_packed_bytes(Int(cols))
         let packedBits = UnsafeMutableRawBufferPointer.allocate(byteCount: byteCount, alignment: MemoryLayout<UInt8>.alignment)
-            let bytesReadCt = fread(packedBits.baseAddress!, 1, byteCount, file)
+        let bytesReadCt = fread(packedBits.baseAddress!, 1, byteCount, file)
         guard bytesReadCt == byteCount else {
             if feof(file) != 0 {
                 if bytesReadCt == 0 {
