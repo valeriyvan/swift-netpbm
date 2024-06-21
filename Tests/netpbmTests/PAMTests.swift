@@ -60,7 +60,18 @@ final class PAMTests: XCTestCase {
 
             """
             .data(using: .utf8)!
-            + Data([0b01010000, 0b10101000, 0b01010000, 0b10101000] as [UInt8])
+            + 
+            Data([0b01010000, 0b10101000, 0b01010000, 0b10101000] as [UInt8])
+            +
+            """
+            P4
+            # Image 2: 4x4 vertical stripes
+            4 4
+
+            """
+            .data(using: .utf8)!
+            +
+            Data([0b00110000, 0b00110000, 0b00110000, 0b00110000] as [UInt8])
         )
 
         var images: [(cols: Int, rows: Int, pixels: [Sample])] = []
@@ -73,13 +84,19 @@ final class PAMTests: XCTestCase {
             )
         }
 
-        XCTAssertEqual(images.count, 1)
+        XCTAssertEqual(images.count, 2)
 
         let first = images[0]
         XCTAssertEqual(first.cols, 5)
         XCTAssertEqual(first.rows, 4)
         XCTAssertEqual(first.pixels.count, 5 * 4)
         XCTAssertEqual(first.pixels, [1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0])
+
+        let second = images[1]
+        XCTAssertEqual(second.cols, 4)
+        XCTAssertEqual(second.rows, 4)
+        XCTAssertEqual(second.pixels.count, 4 * 4)
+        XCTAssertEqual(second.pixels, [1,1,0,0, 1,1,0,0, 1,1,0,0, 1,1,0,0])
     }
 }
 
