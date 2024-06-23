@@ -111,7 +111,7 @@ public struct Pam {
            PAM_PBM_TUPLETYPE, PAM_PGM_TUPLETYPE, or PAM_PPM_TUPLETYPE,
            respectively.
         */
-    let allocation_depth: UInt32
+    var allocation_depth: UInt32
         /* The number of samples for which memory is allocated for any
            'tuple' type associated with this PAM structure.  This must
            be at least as great as 'depth'.  Only the first 'depth' of
