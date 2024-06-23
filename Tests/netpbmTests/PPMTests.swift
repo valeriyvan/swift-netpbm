@@ -28,8 +28,6 @@ final class PPMTests: XCTestCase {
             )
         }
 
-        print(images[0].pixels)
-
         XCTAssertEqual(images.count, 1)
 
         var first = images[0]
