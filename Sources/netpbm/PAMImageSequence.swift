@@ -605,7 +605,6 @@ func _pbm_readpbmrow_packed(_ file: UnsafeMutablePointer<FILE>, cols: Int32, for
             let mask = UInt8(bit.rawValue) << shift
             packedBits[col / 8] |= mask
         }
-        print(NSData(bytes: packedBits.baseAddress!, length: byteCount))
         return packedBits
     case RPBM_FORMAT:
         let byteCount = _pbm_packed_bytes(Int(cols))
