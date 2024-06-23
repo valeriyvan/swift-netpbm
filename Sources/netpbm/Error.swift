@@ -15,4 +15,6 @@ public enum WriteError: Error {
     case ioError
     case wrongMaxVal
     case insufficientMemory
+    case badFormat
+    case internalInconsistency
 }

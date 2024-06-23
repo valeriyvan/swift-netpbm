@@ -69,7 +69,13 @@ public struct Pam {
 
            Use PAM_STRUCT_SIZE() to compute or interpret a value for this.
         */
-    var file: UnsafeMutablePointer<FILE>
+
+    var file: UnsafeMutablePointer<FILE> //{
+//        willSet {
+//            file.deallocate()
+//        }
+//    }
+
     var format: Int32
         /* The format code of the image.  This is PAM_FORMAT
            unless the PAM image is really a view of a PBM, PGM, or PPM
@@ -79,6 +85,7 @@ public struct Pam {
            output, 'plainformat' determines whether the output is the
            raw or plain format of the type given by 'format'.
            */
+
     var plainformat: Bool
         /* Logical: On output, use plain version of the format type
            indicated by 'format'.  Otherwise, use the raw version.
@@ -94,6 +101,7 @@ public struct Pam {
            This is meaningless when 'format' is PAM_FORMAT, as PAM does not
            have plain and raw variations.
         */
+
     var height: Int32  /* Height of image in rows */
     var width: Int32
         /* Width of image in number of columns (tuples per row) */
