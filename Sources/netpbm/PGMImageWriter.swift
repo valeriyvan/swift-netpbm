@@ -48,7 +48,7 @@ public struct PGMImageWriter/*<Grays: Sequence<Gray>>*/ {
 
 func _pgm_writepgm(_ file: UnsafeMutablePointer<FILE>, grays: [Gray], cols: Int32, rows: Int32, maxVal: Gray, forceplain: Bool) throws {
 
-    try _pgm_writepgminit(file, grays: grays, cols: cols, rows: rows, maxVal: maxVal, forceplain: forceplain)
+    try _pgm_writepgminit(file, cols: cols, rows: rows, maxVal: maxVal, forceplain: forceplain)
 
     for row in 0..<rows {
         try _pgm_writepgmrow(
@@ -61,7 +61,7 @@ func _pgm_writepgm(_ file: UnsafeMutablePointer<FILE>, grays: [Gray], cols: Int3
     }
 }
 
-func _pgm_writepgminit(_ file: UnsafeMutablePointer<FILE>, grays: [Gray], cols: Int32, rows: Int32, maxVal: Gray, forceplain: Bool) throws {
+func _pgm_writepgminit(_ file: UnsafeMutablePointer<FILE>, cols: Int32, rows: Int32, maxVal: Gray, forceplain: Bool) throws {
     /* For Caller's convenience, we include validating computability of the
        image parameters, since Caller may be using them in arithmetic after
        our return.
