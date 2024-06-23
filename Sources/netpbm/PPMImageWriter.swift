@@ -1,6 +1,7 @@
 import Foundation
 
 public struct PPMImageWriter {
+
     // In case of plane output returned value will be data of String in .ascii encoding
     // (.utf8, obviously, works as well).
     // In case of raw (binary) output, Data returned shouldn't be used for constructing String
