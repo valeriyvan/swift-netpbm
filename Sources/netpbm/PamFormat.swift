@@ -1,5 +1,7 @@
 import Foundation
 
+let PAM_OVERALL_MAXVAL: Sample = 65535
+
 let PAM_MAGIC1: Int32 = Int32(Character("P").asciiValue!)
 let PAM_MAGIC2: Int32 = Int32(Character("7").asciiValue!)
 let PAM_FORMAT: Int32 = PAM_MAGIC1 * 256 + PAM_MAGIC2
