@@ -404,6 +404,7 @@ func _readRawNonPbmRow(pam: Pam) throws -> [[Sample]] {
     let rowImageSize = Int(pam.width) * Int(pam.bytes_per_sample) * Int(pam.depth)
 
     let inbuf = _pnm_allocrowimage(pam: pam)
+    defer { inbuf.deallocate() }
 
     let bytesRead = fread(inbuf.baseAddress!, 1, rowImageSize, pam.file)
 
@@ -427,8 +428,6 @@ func _readRawNonPbmRow(pam: Pam) throws -> [[Sample]] {
         throw ParseError.internalInconsistency
     }
     try _validatePamRow(pam: pam, tuplerow: tuplerow)
-
-    inbuf.deallocate()
 
     return tuplerow
 }
