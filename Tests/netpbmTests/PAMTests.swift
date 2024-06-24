@@ -3,7 +3,7 @@ import XCTest
 import Algorithms // chunks
 
 final class PAMTests: XCTestCase {
-    
+
     func testReadPBMPlain() async throws {
         let iSeq = try PAMImageSequence(data:
             """
@@ -14,7 +14,7 @@ final class PAMTests: XCTestCase {
             1 0 1 0 1
             0 1 0 1 0
             1 0 1 0 1
-            
+
             P1
             # Image 2: 4x4 vertical stripes
             4 4
@@ -22,13 +22,13 @@ final class PAMTests: XCTestCase {
             0 0 1 1
             0 0 1 1
             0 0 1 1
-            
+
             """
             .data(using: .utf8)!
         )
-        
+
         var images: [(cols: Int, rows: Int, pixels: [Sample])] = []
-        
+
         for try await imageElementSequence in iSeq {
             let pixels: [Sample] = try await imageElementSequence.reduce(into: []) { $0.append(contentsOf: $1)
             }
@@ -36,29 +36,29 @@ final class PAMTests: XCTestCase {
                 (cols: imageElementSequence.width, rows: imageElementSequence.height, pixels: pixels)
             )
         }
-        
+
         XCTAssertEqual(images.count, 2)
-        
+
         let first = images[0]
         XCTAssertEqual(first.cols, 5)
         XCTAssertEqual(first.rows, 4)
         XCTAssertEqual(first.pixels.count, 5 * 4)
         XCTAssertEqual(first.pixels, [1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0])
-        
+
         let second = images[1]
         XCTAssertEqual(second.cols, 4)
         XCTAssertEqual(second.rows, 4)
         XCTAssertEqual(second.pixels.count, 4 * 4)
         XCTAssertEqual(second.pixels, [1,1,0,0, 1,1,0,0, 1,1,0,0, 1,1,0,0])
     }
-    
+
     func testReadWritePBMMixedPlainBinary() async throws {
         let iSeq = try PAMImageSequence(data:
             """
             P4
             # Image 1: 5x4 checkerboard pattern
             5 4
-            
+
             """
             .data(using: .utf8)!
             +
@@ -68,15 +68,15 @@ final class PAMTests: XCTestCase {
             P4
             # Image 2: 4x4 vertical stripes
             4 4
-            
+
             """
             .data(using: .utf8)!
             +
             Data([0b00110000, 0b00110000, 0b00110000, 0b00110000] as [UInt8])
         )
-        
+
         var images: [(cols: Int, rows: Int, pixels: [Sample])] = []
-        
+
         for try await imageElementSequence in iSeq {
             let pixels: [Sample] = try await imageElementSequence.reduce(into: []) { $0.append(contentsOf: $1)
             }
@@ -84,21 +84,21 @@ final class PAMTests: XCTestCase {
                 (cols: imageElementSequence.width, rows: imageElementSequence.height, pixels: pixels)
             )
         }
-        
+
         XCTAssertEqual(images.count, 2)
-        
+
         var first = images[0]
         XCTAssertEqual(first.cols, 5)
         XCTAssertEqual(first.rows, 4)
         XCTAssertEqual(first.pixels.count, 5 * 4)
         XCTAssertEqual(first.pixels, [1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0])
-        
+
         var second = images[1]
         XCTAssertEqual(second.cols, 4)
         XCTAssertEqual(second.rows, 4)
         XCTAssertEqual(second.pixels.count, 4 * 4)
         XCTAssertEqual(second.pixels, [1,1,0,0, 1,1,0,0, 1,1,0,0, 1,1,0,0])
-        
+
         let pamImages: [(pam: Pam, pixels: [[[Sample]]])] = images.map { image in
             var pam = Pam()
             pam.width = Int32(image.cols)
@@ -112,7 +112,7 @@ final class PAMTests: XCTestCase {
                 pixels: image.pixels.map{ [$0] }.chunks(ofCount: image.cols).map(Array.init)
             )
         }
-        
+
         let data = try PAMImageWriter.write(images: pamImages)
         XCTAssertEqual(
             data,
@@ -123,18 +123,18 @@ final class PAMTests: XCTestCase {
             10101
             01010
             10101
-            
+
             P1
             4 4
             0011
             0011
             0011
             0011
-            
+
             """
             .data(using: .utf8)
         )
-        
+
         let pamBinaryImages: [(pam: Pam, pixels: [[[Sample]]])] = pamImages.map { image in
             var pam = image.pam
             pam.format = RPBM_FORMAT
@@ -144,22 +144,22 @@ final class PAMTests: XCTestCase {
                 pixels: image.pixels
             )
         }
-        
+
         let binary = try PAMImageWriter.write(images: pamBinaryImages)
-        
+
         // Now test that binary image could be read and it's the same
         let iSeqBinary = try PAMImageSequence(data: binary)
-        
+
         images = []
-        
+
         for try await imageElementSequence in iSeqBinary {
             let pixels: [Sample] = try await imageElementSequence.reduce(into: []) { $0.append($1.first!) }
             let image = (cols: imageElementSequence.width, rows: imageElementSequence.height, pixels: pixels)
             images.append(image)
         }
-        
+
         XCTAssertEqual(images.count, 2)
-        
+
         first = images[0]
         XCTAssertEqual(first.cols, 5)
         XCTAssertEqual(first.rows, 4)
@@ -172,88 +172,107 @@ final class PAMTests: XCTestCase {
         XCTAssertEqual(second.pixels.count, 4 * 4)
         XCTAssertEqual(second.pixels, [1,1,0,0, 1,1,0,0, 1,1,0,0, 1,1,0,0])
     }
-}
 
-//    func testImagesFromStringMissingBitsThrows() async throws {
-//        let imageSequence = try PBMImageSequence(data:
-//            """
-//            P1
-//            # Image 1: 5x4 checkerboard pattern
-//            5 4
-//            0 1 0 1 0
-//            1 0 1 0 1
-//            0 1 0 1 0
-//            1 0 1 0
-//
-//            """
-//            .data(using: .utf8)!
-//        )
-//
-//        var images: [(cols: Int, rows: Int, pixels: [UInt8])] = []
-//
-//        for try await imageBitSequence in imageSequence {
-//            let pixels: [UInt8] = try await imageBitSequence.reduce(into: []) { $0.append(UInt8($1.rawValue)) }
-//            let image = (cols: imageBitSequence.width, rows: imageBitSequence.height, pixels: pixels)
-//            images.append(image)
-//        }
-//
-//        XCTAssertEqual(images.count, 2)
-//
-//        first = images[0]
-//        XCTAssertEqual(first.cols, 5)
-//        XCTAssertEqual(first.rows, 4)
-//        XCTAssertEqual(first.pixels.count, 5 * 4)
-//        XCTAssertEqual(first.pixels, [0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1])
-//
-//        second = images[1]
+    func testPGMReadWrite() async throws {
+        let iSeq = try PAMImageSequence(data:
+            """
+            P2
+            # feep.ascii.pgm
+            24 7
+            15
+            0 0  0  0  0  0  0  0  0 0  0  0  0  0  0  0  0 0  0  0  0  0  0  0
+            0 3  3  3  3  0  0  7  7 7  7  0  0 11 11 11 11 0  0 15 15 15 15  0
+            0 3  0  0  0  0  0  7  0 0  0  0  0 11  0  0  0 0  0 15  0  0 15  0
+            0 3  3  3  0  0  0  7  7 7  0  0  0 11 11 11  0 0  0 15 15 15 15  0
+            0 3  0  0  0  0  0  7  0 0  0  0  0 11  0  0  0 0  0 15  0  0  0  0
+            0 3  0  0  0  0  0  7  7 7  7  0  0 11 11 11 11 0  0 15  0  0  0  0
+            0 0  0  0  0  0  0  0  0 0  0  0  0  0  0  0  0 0  0  0  0  0  0  0
+
+            """
+            .data(using: .utf8)!
+        )
+
+        var images: [(cols: Int, rows: Int, pixels: [Sample])] = []
+
+        for try await imageElementSequence in iSeq {
+            let pixels: [Sample] = try await imageElementSequence.reduce(into: []) { $0.append(contentsOf: $1)
+            }
+            images.append(
+                (cols: imageElementSequence.width, rows: imageElementSequence.height, pixels: pixels)
+            )
+        }
+
+        XCTAssertEqual(images.count, 1)
+
+        var first = images[0]
+        XCTAssertEqual(first.cols, 24)
+        XCTAssertEqual(first.rows, 7)
+        XCTAssertEqual(first.pixels.count, 24 * 7)
+        XCTAssertEqual(first.pixels, [
+            0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,
+            0, 3,  3,  3,  3,  0,  0,  7,  7, 7,  7,  0,  0, 11, 11, 11, 11, 0,  0, 15, 15, 15, 15,  0,
+            0, 3,  0,  0,  0,  0,  0,  7,  0, 0,  0,  0,  0, 11,  0,  0,  0, 0,  0, 15,  0,  0, 15,  0,
+            0, 3,  3,  3,  0,  0,  0,  7,  7, 7,  0,  0,  0, 11, 11, 11,  0, 0,  0, 15, 15, 15, 15,  0,
+            0, 3,  0,  0,  0,  0,  0,  7,  0, 0,  0,  0,  0, 11,  0,  0,  0, 0,  0, 15,  0,  0,  0,  0,
+            0, 3,  0,  0,  0,  0,  0,  7,  7, 7,  7,  0,  0, 11, 11, 11, 11, 0,  0, 15,  0,  0,  0,  0,
+            0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0
+        ])
+
+//        var second = images[1]
 //        XCTAssertEqual(second.cols, 4)
 //        XCTAssertEqual(second.rows, 4)
 //        XCTAssertEqual(second.pixels.count, 4 * 4)
 //        XCTAssertEqual(second.pixels, [0,0,1,1, 0,0,1,1, 0,0,1,1, 0,0,1,1])
-//
-//        XCTAssertThrowsError(
-//            try PBMImageSequence(data:
-//                """
-//                P1
-//                # Image 1: 5x4 checkerboard pattern
-//                5 4
-//                0 1 0 1 0
-//                1 0 1 0 1
-//                0 1 0 1 0
-//                1 0 1 0
-//
-//                """
-//                .data(using: .utf8)!
-//            )
-//            .last
-//            .map { try await $0.reduce(into: []) { $0.append(UInt8($1.rawValue)) } }
-//        ) { error in
-//            XCTAssertEqual(error as? PBM.PbmParseError, PBM.PbmParseError.unexpectedEndOfFile)
-//        }
 
-//        XCTAssertThrowsError(
-//            try PBM.images(string:
-//                """
-//                P1
-//                # Image 1: 5x4 checkerboard pattern
-//                5 4
-//                0 1 0 1 0
-//                1 0 1 0 1
-//                0 1 0 1 0
-//                1 0 1 0
-//
-//                P1
-//                # Image 2: 4x4 vertical stripes
-//                4 4
-//                0 0 1 1
-//                0 0 1 1
-//                0 0 1 1
-//                0 0 1 1
-//
-//                """
-//                          )
-//        ) { error in
-//            XCTAssertEqual(error as? PBM.PbmParseError, PBM.PbmParseError.junkWhereBitsShouldBe)
-//        }
-//    }
+        /*
+        let data = try PGMImageWriter.write(images: images, forcePlane: true)
+        XCTAssertEqual(
+            data,
+            """
+            P2
+            24 7
+            15
+            0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+            0 3 3 3 3 0 0 7 7 7 7 0 0 11 11 11 11 0 0 15 15 15 15 0
+            0 3 0 0 0 0 0 7 0 0 0 0 0 11 0 0 0 0 0 15 0 0 15 0
+            0 3 3 3 0 0 0 7 7 7 0 0 0 11 11 11 0 0 0 15 15 15 15 0
+            0 3 0 0 0 0 0 7 0 0 0 0 0 11 0 0 0 0 0 15 0 0 0 0
+            0 3 0 0 0 0 0 7 7 7 7 0 0 11 11 11 11 0 0 15 0 0 0 0
+            0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+            """
+            .data(using: .utf8)
+        )
+
+        let binary = try PGMImageWriter.write(images: images, forcePlane: false)
+        // Now test that binary image could be read and it's the same
+        let iSeqBinary = try PGMImageSequence(data: binary)
+
+        images = []
+
+        for try await imageGraySequence in iSeqBinary {
+            let pixels: [Gray] = try await imageGraySequence.reduce(into: [Gray]()) { $0.append($1) }
+            images.append(
+                (cols: imageGraySequence.width, rows: imageGraySequence.height, maxValue: imageGraySequence.maxValue, pixels: pixels)
+            )
+        }
+
+        XCTAssertEqual(images.count, 1)
+
+        first = images[0]
+        XCTAssertEqual(first.cols, 24)
+        XCTAssertEqual(first.rows, 7)
+        XCTAssertEqual(first.pixels.count, 24 * 7)
+        XCTAssertEqual(first.pixels, [
+            0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,
+            0, 3,  3,  3,  3,  0,  0,  7,  7, 7,  7,  0,  0, 11, 11, 11, 11, 0,  0, 15, 15, 15, 15,  0,
+            0, 3,  0,  0,  0,  0,  0,  7,  0, 0,  0,  0,  0, 11,  0,  0,  0, 0,  0, 15,  0,  0, 15,  0,
+            0, 3,  3,  3,  0,  0,  0,  7,  7, 7,  0,  0,  0, 11, 11, 11,  0, 0,  0, 15, 15, 15, 15,  0,
+            0, 3,  0,  0,  0,  0,  0,  7,  0, 0,  0,  0,  0, 11,  0,  0,  0, 0,  0, 15,  0,  0,  0,  0,
+            0, 3,  0,  0,  0,  0,  0,  7,  7, 7,  7,  0,  0, 11, 11, 11, 11, 0,  0, 15,  0,  0,  0,  0,
+            0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0
+        ])
+         */
+    }
+}
 
