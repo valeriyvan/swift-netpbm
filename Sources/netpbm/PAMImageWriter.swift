@@ -209,9 +209,12 @@ func _writePamPlainRow(pam: Pam, tuplerow: [[Sample]]) throws {
     var samplesInCurrentLine = 0
         /* number of samples written from start of line  */
 
+    let formatEndOfLine = "%lu"
+    let formatMiddleLine = "%lu "
     for col in 0..<Int(pam.width) {
         for plane in 0..<Int(pam.depth) {
-            let value = String(format: "%lu ", tuplerow[col][plane])
+            let format = (col < Int(pam.width) - 1 || plane < Int(pam.depth) - 1) ? formatMiddleLine : formatEndOfLine
+            let value = String(format: format, tuplerow[col][plane])
             guard value.withCString({ fputs($0, pam.file) }) != EOF else {
                 throw WriteError.ioError
             }
