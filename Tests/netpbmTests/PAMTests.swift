@@ -224,8 +224,22 @@ final class PAMTests: XCTestCase {
 //        XCTAssertEqual(second.pixels.count, 4 * 4)
 //        XCTAssertEqual(second.pixels, [0,0,1,1, 0,0,1,1, 0,0,1,1, 0,0,1,1])
 
-        /*
-        let data = try PGMImageWriter.write(images: images, forcePlane: true)
+        let pamPGMPlainImages: [(pam: Pam, pixels: [[[Sample]]])] = images.map { image in
+            var pam = Pam()
+            pam.width = Int32(image.cols)
+            pam.height = Int32(image.rows)
+            pam.depth = 1
+            pam.maxVal = 15
+            pam.format = PGM_FORMAT
+            pam.plainformat = true
+            return (
+                pam: pam,
+                pixels: image.pixels.map{ [$0] }.chunks(ofCount: image.cols).map(Array.init)
+            )
+        }
+
+        let data = try PAMImageWriter.write(images: pamPGMPlainImages)
+
         XCTAssertEqual(
             data,
             """
@@ -244,16 +258,27 @@ final class PAMTests: XCTestCase {
             .data(using: .utf8)
         )
 
-        let binary = try PGMImageWriter.write(images: images, forcePlane: false)
+        let pamPGMBinaryImages: [(pam: Pam, pixels: [[[Sample]]])] = pamPGMPlainImages.map { image in
+            var pam = image.pam
+            pam.format = RPGM_FORMAT
+            pam.plainformat = false
+            return (
+                pam: pam,
+                pixels: image.pixels
+            )
+        }
+
+        let binary = try PAMImageWriter.write(images: pamPGMBinaryImages)
         // Now test that binary image could be read and it's the same
-        let iSeqBinary = try PGMImageSequence(data: binary)
+        let iSeqBinary = try PAMImageSequence(data: binary)
 
         images = []
 
-        for try await imageGraySequence in iSeqBinary {
-            let pixels: [Gray] = try await imageGraySequence.reduce(into: [Gray]()) { $0.append($1) }
+        for try await imageElementSequence in iSeqBinary {
+            let pixels: [Sample] = try await imageElementSequence.reduce(into: []) { $0.append(contentsOf: $1)
+            }
             images.append(
-                (cols: imageGraySequence.width, rows: imageGraySequence.height, maxValue: imageGraySequence.maxValue, pixels: pixels)
+                (cols: imageElementSequence.width, rows: imageElementSequence.height, pixels: pixels)
             )
         }
 
@@ -272,7 +297,6 @@ final class PAMTests: XCTestCase {
             0, 3,  0,  0,  0,  0,  0,  7,  7, 7,  7,  0,  0, 11, 11, 11, 11, 0,  0, 15,  0,  0,  0,  0,
             0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0
         ])
-         */
     }
 }
 
