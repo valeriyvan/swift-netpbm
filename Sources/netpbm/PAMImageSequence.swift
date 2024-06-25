@@ -142,7 +142,7 @@ func _pnm_bytespersample(maxval: Sample) -> UInt32 {
        to rely on it.
     */
 
-    var a: Sample = 0
+    var a: Sample = maxval
     for i in 0...UInt32(MemoryLayout.size(ofValue: maxval)) {
         guard a != 0 else { return i }
         a >>= 8
