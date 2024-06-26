@@ -298,5 +298,121 @@ final class PAMTests: XCTestCase {
             0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0,  0,  0,  0
         ])
     }
+
+    func testPPMReadWrite() async throws {
+        let iSeq = try PAMImageSequence(data:
+            """
+            P3
+            2 3
+            255
+            255 0 0   0 255 0
+            0 255 0   0 255 0
+            0 0 255   255 255 255
+
+            """
+            .data(using: .utf8)!
+        )
+
+        var images: [(cols: Int, rows: Int, pixels: [[Sample]])] = []
+
+        for try await imageElementSequence in iSeq {
+            let colors: [Sample] = try await imageElementSequence.reduce(into: []) { $0.append(contentsOf: $1)
+            }
+            let pixels = colors.chunks(ofCount: 3).map(Array.init)
+            images.append(
+                (cols: imageElementSequence.width, rows: imageElementSequence.height, pixels: pixels)
+            )
+        }
+
+        XCTAssertEqual(images.count, 1)
+
+        var first = images[0]
+        XCTAssertEqual(first.cols, 2)
+        XCTAssertEqual(first.rows, 3)
+        XCTAssertEqual(first.pixels.count, 2 * 3)
+        XCTAssertTrue(first.pixels.allSatisfy { $0.count == 3 })
+        XCTAssertEqual(
+            first.pixels,
+            [
+                [Sample(255), Sample(0),   Sample(0)],
+                [Sample(0),   Sample(255), Sample(0)],
+                [Sample(0),   Sample(255), Sample(0)],
+                [Sample(0),   Sample(255), Sample(0)],
+                [Sample(0),   Sample(0),   Sample(255)],
+                [Sample(255), Sample(255), Sample(255)]
+            ]
+        )
+
+        let pamPPMPlainImages: [(pam: Pam, pixels: [[[Sample]]])] = images.map { image in
+            var pam = Pam()
+            pam.width = Int32(image.cols)
+            pam.height = Int32(image.rows)
+            pam.depth = 3
+            pam.maxVal = 255
+            pam.format = PPM_FORMAT
+            pam.plainformat = true
+            return (
+                pam: pam,
+                pixels: image.pixels.chunks(ofCount: image.cols).map(Array.init)
+            )
+        }
+
+        let data = try PAMImageWriter.write(images: pamPPMPlainImages)
+        XCTAssertEqual(
+            data,
+            """
+            P3
+            2 3
+            255
+            255 0 0 0 255 0
+            0 255 0 0 255 0
+            0 0 255 255 255 255
+
+            """
+            .data(using: .utf8)
+        )
+
+        let pamPPMBinaryImages: [(pam: Pam, pixels: [[[Sample]]])] = pamPPMPlainImages.map { image in
+            var pam = image.pam
+            pam.format = RPPM_FORMAT
+            pam.plainformat = false
+            return (
+                pam: pam,
+                pixels: image.pixels
+            )
+        }
+
+        let binary = try PAMImageWriter.write(images: pamPPMBinaryImages)
+        // Now test that binary image could be read and it's the same
+        let iSeqBinary = try PAMImageSequence(data: binary)
+
+        images = []
+
+        for try await imageElementSequence in iSeqBinary {
+            let colors: [Sample] = try await imageElementSequence.reduce(into: []) { $0.append(contentsOf: $1)
+            }
+            let pixels = colors.chunks(ofCount: 3).map(Array.init)
+            images.append(
+                (cols: imageElementSequence.width, rows: imageElementSequence.height, pixels: pixels)
+            )
+        }
+
+        first = images[0]
+        XCTAssertEqual(first.cols, 2)
+        XCTAssertEqual(first.rows, 3)
+        XCTAssertEqual(first.pixels.count, 2 * 3)
+        XCTAssertEqual(
+            first.pixels,
+            [
+                [Sample(255), Sample(0),   Sample(0)],
+                [Sample(0),   Sample(255), Sample(0)],
+                [Sample(0),   Sample(255), Sample(0)],
+                [Sample(0),   Sample(255), Sample(0)],
+                [Sample(0),   Sample(0),   Sample(255)],
+                [Sample(255), Sample(255), Sample(255)]
+            ]
+        )
+    }
+
 }
 
