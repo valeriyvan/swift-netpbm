@@ -260,74 +260,98 @@ func _pgm_validateComputableMaxval(maxVal: Gray) throws {
     }
 }
 
+struct HeaderSeen {
+/*----------------------------------------------------------------------------
+   This structure tells what we've seen so far in our progress through the
+   PAM header
+------------------------------------------------------------------------*/
+    var width: Bool
+    var height: Bool
+    var depth: Bool
+    var maxval: Bool
+    var endhdr: Bool
+    init() {
+        width  = false
+        height = false
+        depth  = false
+        maxval = false
+        endhdr = false
+    }
+}
+
 func _readpaminitrest(pam: inout Pam) throws {
-    fatalError("Not implemented")
 /*----------------------------------------------------------------------------
    Read the rest of the PAM header (after the first line -- the magic
    number line).  Fill in all the information in *pamP.
 -----------------------------------------------------------------------------*/
-/*    struct headerSeen headerSeen;
-    char * comments;
+    var headerSeen: HeaderSeen = HeaderSeen()
 
-    headerSeen.width  = FALSE;
-    headerSeen.height = FALSE;
-    headerSeen.depth  = FALSE;
-    headerSeen.maxval = FALSE;
-    headerSeen.endhdr = FALSE;
+    pam.tuple_type = ""
 
-    pamP->tuple_type[0] = '\0';
+    var comments = ""
 
-    comments = strdup("");
+    var c: Int32
+    repeat {
+        c = getc(pam.file)
+    } while c != -1 && c != Int32(Character("\n").asciiValue!)
 
-    {
-        int c;
-        /* Read off rest of 1st line -- probably just the newline after the
-           magic number
-        */
-        while ((c = getc(pamP->file)) != -1 && c != '\n');
-    }
-
-    while (!headerSeen.endhdr) {
-        char buffer[256];
-        char * rc;
-        rc = fgets(buffer, sizeof(buffer), pamP->file);
-        if (rc == NULL)
-            pm_error("EOF or error reading file while trying to read the "
-                     "PAM header");
-        else {
-            buffer[256-1-1] = '\n';  /* In case fgets() truncated */
-            if (buffer[0] == '#')
-                appendComment(&comments, buffer);
-            else if (pm_stripeq(buffer, ""));
-                /* Ignore it; it's a blank line */
-            else
-                processHeaderLine(buffer, pamP, &headerSeen);
+    let buffer = UnsafeMutableRawBufferPointer.allocate(byteCount: 256, alignment: MemoryLayout<UInt8>.alignment)
+    defer { buffer.deallocate() }
+    while !headerSeen.endhdr {
+        let rc = fgets(buffer.baseAddress!, Int32(buffer.count), pam.file)
+        guard rc != nil else {
+            print("EOF or error reading file while trying to read the PAM header")
+            throw ParseError.ioError
+        }
+        buffer[buffer.count - 1 - 1] = Character("\n").asciiValue!  /* In case fgets() truncated */
+        if buffer[0] == Character("#").asciiValue! {
+            try _appendComment(comments: &comments, commentHeader: buffer.baseAddress!)
+        } else if _pm_stripeq(String(cString: buffer.baseAddress!.assumingMemoryBound(to: CChar.self)), "") {
+            /* Ignore it; it's a blank line */
+        } else {
+            try _processHeaderLine(buffer: buffer, pam: &pam, headerSeen: &headerSeen)
         }
     }
 
-    disposeOfComments(pamP, comments);
+    _disposeOfComments(pam: &pam, comments: comments)
 
-    if (!headerSeen.height)
-        pm_error("No HEIGHT header line in PAM header");
-    if (!headerSeen.width)
-        pm_error("No WIDTH header line in PAM header");
-    if (!headerSeen.depth)
-        pm_error("No DEPTH header line in PAM header");
-    if (!headerSeen.maxval)
-        pm_error("No MAXVAL header line in PAM header");
+    guard headerSeen.height else {
+        print("No HEIGHT header line in PAM header")
+        throw ParseError.wrongFormat
+    }
+    guard headerSeen.width else {
+        print("No WIDTH header line in PAM header")
+        throw ParseError.wrongFormat
+    }
+    guard headerSeen.depth else {
+        print("No DEPTH header line in PAM header")
+        throw ParseError.wrongFormat
+    }
+    guard headerSeen.maxval else {
+        print("No MAXVAL header line in PAM header")
+        throw ParseError.wrongFormat
+    }
 
-    if (pamP->height == 0)
-        pm_error("HEIGHT value is zero in PAM header");
-    if (pamP->width == 0)
-        pm_error("WIDTH value is zero in PAM header");
-    if (pamP->depth == 0)
-        pm_error("DEPTH value is zero in PAM header");
-    if (pamP->maxval == 0)
-        pm_error("MAXVAL value is zero in PAM header");
-    if (pamP->maxval > PAM_OVERALL_MAXVAL)
-        pm_error("MAXVAL value (%lu) in PAM header is greater than %lu",
-                 pamP->maxval, PAM_OVERALL_MAXVAL);
-*/
+    guard pam.height > 0 else {
+        print("HEIGHT value is zero in PAM header")
+        throw ParseError.wrongFormat
+    }
+    guard pam.width > 0 else {
+        print("WIDTH value is zero in PAM header")
+        throw ParseError.wrongFormat
+    }
+    guard pam.depth > 0 else {
+        print("DEPTH value is zero in PAM header")
+        throw ParseError.wrongFormat
+    }
+    guard pam.maxVal > 0 else {
+        print("MAXVAL value is zero in PAM header")
+        throw ParseError.wrongFormat
+    }
+    guard pam.maxVal <= PAM_OVERALL_MAXVAL else {
+        print("MAXVAL value (\(pam.maxVal)) in PAM header is greater than \(PAM_OVERALL_MAXVAL)")
+        throw ParseError.wrongFormat
+    }
 }
 
 func _pgm_readpgmrow(_ file: UnsafeMutablePointer<FILE>, cols: Int32, maxVal: Gray, format: Int32) throws -> [Gray] {

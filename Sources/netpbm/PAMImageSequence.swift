@@ -629,3 +629,151 @@ func _pbm_readpbmrow_packed(_ file: UnsafeMutablePointer<FILE>, cols: Int32, for
         throw ParseError.internalInconsistency
     }
 }
+
+let MAX_LABEL_LENGTH = 8
+let MAX_VALUE_LENGTH = 255
+
+func _parseHeaderLine(buffer: UnsafeMutableRawBufferPointer, label: UnsafeMutableRawBufferPointer, value: UnsafeMutableRawBufferPointer) {
+/*----------------------------------------------------------------------------
+   We truncate the label to MAX_LABEL_LENGTH and the value to
+   MAX_VALUE_LENGTH.  There must be at least that much space (plus space
+   for a terminating NUL) at 'label' and 'value', respectively.
+-----------------------------------------------------------------------------*/
+    var bufferCurs: Int = 0
+
+    /* Skip initial white space */
+    while CharacterSet.whitespacesAndNewlines.contains(UnicodeScalar(buffer[bufferCurs])) { bufferCurs += 1 }
+
+    /* Read off label, put as much as will fit into label[] */
+    var labelCurs = 0
+
+    while !CharacterSet.whitespacesAndNewlines.contains(UnicodeScalar(buffer[bufferCurs])) && buffer[bufferCurs] != 0 {
+        if (labelCurs < MAX_LABEL_LENGTH) {
+            label[labelCurs] = buffer[bufferCurs]
+            labelCurs += 1
+        }
+        bufferCurs += 1
+    }
+    label[labelCurs] = 0  /* null terminate it */
+
+    /* Skip white space between label and value */
+    while CharacterSet.whitespacesAndNewlines.contains(UnicodeScalar(buffer[bufferCurs])) { bufferCurs += 1 }
+
+    /* copy value into value[], truncating as necessary */
+    strncpy(value.baseAddress!, buffer.baseAddress! + bufferCurs, MAX_VALUE_LENGTH)
+    value[MAX_VALUE_LENGTH] = 0
+
+    /* Remove trailing white space from value[] */
+    var valueCurs = strlen(value.baseAddress!)
+    while valueCurs > 0 && CharacterSet.whitespacesAndNewlines.contains(UnicodeScalar(value[valueCurs - 1])) { valueCurs -= 1 }
+    value[valueCurs] = 0
+}
+
+func _processHeaderLine(buffer: UnsafeMutableRawBufferPointer, pam: inout Pam, headerSeen: inout HeaderSeen) throws {
+/*----------------------------------------------------------------------------
+   Process a line from the PAM header.  The line is buffer[], and it is not
+   a comment or blank.
+
+   Put the value that the line defines in *pamP (unless it's ENDHDR).
+
+   Update *headerSeenP with whatever we see.
+-----------------------------------------------------------------------------*/
+    let label = UnsafeMutableRawBufferPointer.allocate(byteCount: MAX_LABEL_LENGTH + 1, alignment: MemoryLayout<UInt8>.alignment)
+    defer { label.deallocate() }
+    let value = UnsafeMutableRawBufferPointer.allocate(byteCount: MAX_VALUE_LENGTH + 1, alignment: MemoryLayout<UInt8>.alignment)
+    defer { value.deallocate() }
+
+    _parseHeaderLine(buffer: buffer, label: label, value: value)
+
+    if strcmp(label.baseAddress!, "ENDHDR") == 0 {
+        headerSeen.endhdr = true
+    } else if strcmp(label.baseAddress!, "WIDTH") == 0 {
+        pam.width = try Int32(_parseHeaderInt(valueString: value, name: label))
+        headerSeen.width = true
+    } else if strcmp(label.baseAddress!, "HEIGHT") == 0 {
+        pam.height = try Int32(_parseHeaderInt(valueString: value, name: label))
+        headerSeen.height = true
+    } else if strcmp(label.baseAddress!, "DEPTH") == 0 {
+        pam.depth = try UInt32(_parseHeaderUint(valueString: value, name: label))
+        headerSeen.depth = true
+    } else if strcmp(label.baseAddress!, "MAXVAL") == 0 {
+        let maxval = try _parseHeaderUint(valueString: value, name: label)
+        guard maxval < 1<<16 else {
+            print("Maxval too large: %u.  Max is 65535", maxval)
+            throw ParseError.wrongFormat
+        }
+        pam.maxVal = maxval
+        headerSeen.maxval = true
+    } else if strcmp(label.baseAddress!, "TUPLTYPE") == 0 {
+        guard strlen(value.baseAddress!) != 0 else {
+            print("TUPLTYPE header does not have any tuple type text")
+            throw ParseError.wrongFormat
+        }
+        if !pam.tuple_type.isEmpty {
+            pam.tuple_type += " "
+        }
+        pam.tuple_type += String(cString: UnsafePointer(value.baseAddress!.assumingMemoryBound(to: CChar.self)))
+    } else {
+        print("Unrecognized header line type: '\(String(cString: UnsafePointer(label.baseAddress!.assumingMemoryBound(to: CChar.self))))'. Possible missing ENDHDR line?")
+        throw ParseError.wrongFormat
+    }
+}
+
+func _parseHeaderInt(valueString: UnsafeMutableRawBufferPointer, name: UnsafeMutableRawBufferPointer) throws -> Int {
+    /*----------------------------------------------------------------------------
+     This is not what it seems.  It is the same thing as
+     parseHeaderUint, except that the type of the value it returns is
+     "int" instead of "unsigned int".  But that doesn't mean the value can
+     be negative.  We throw an error is it is not positive.
+     -----------------------------------------------------------------------------*/
+    let valueNum = try _parseHeaderUint(valueString: valueString, name: name)
+    //    if ((int)valueNum != valueNum)
+    //        pm_error("Ridiculously large value for %s in "
+    //                 "PAM file header: %u", name, valueNum);
+    //    else
+    return Int(valueNum)
+}
+
+func _parseHeaderUint(valueString: UnsafeMutableRawBufferPointer, name: UnsafeMutableRawBufferPointer) throws -> UInt {
+/*----------------------------------------------------------------------------
+   Interpret 'valueString' as the number in a header such as
+   "WIDTH 200".
+
+   'name' is the header name ("WIDTH" in the example).
+-----------------------------------------------------------------------------*/
+    guard strlen(valueString.baseAddress!) > 0 else {
+        print("Missing value for \(String(cString: UnsafePointer(name.baseAddress!.assumingMemoryBound(to: CChar.self)))) in PAM file header.")
+        throw ParseError.wrongFormat
+    }
+    var endptr: UnsafeMutablePointer<CChar>?
+    errno = 0;  /* Clear errno so we can detect strtol() failure */
+    let valueNum = strtol(valueString.baseAddress!, &endptr, 10);
+    guard errno == 0 else {
+        print("Too-large value for \(String(cString: UnsafePointer(name.baseAddress!.assumingMemoryBound(to: CChar.self)))) in PAM file header: '\(String(cString: UnsafePointer(valueString.baseAddress!.assumingMemoryBound(to: CChar.self))))'")
+        throw ParseError.wrongFormat
+    }
+    guard endptr?.pointee == Optional(0) else {
+        print("Non-numeric value for \(String(cString: UnsafePointer(name.baseAddress!.assumingMemoryBound(to: CChar.self)))) in PAM file header: '\(String(cString: UnsafePointer(valueString.baseAddress!.assumingMemoryBound(to: CChar.self))))'")
+        throw ParseError.wrongFormat
+    }
+    guard valueNum > 0 else {
+        print("Negative value for \(String(cString: UnsafePointer(name.baseAddress!.assumingMemoryBound(to: CChar.self)))) in PAM file header: '\(String(cString: UnsafePointer(valueString.baseAddress!.assumingMemoryBound(to: CChar.self))))'")
+        throw ParseError.wrongFormat
+    }
+//    if ((unsigned int)valueNum != valueNum)
+//        pm_error("Ridiculously large value for %s in "
+//                 "PAM file header: %lu", name, valueNum);
+    return UInt(valueNum)
+}
+
+
+func _appendComment(comments: inout String,
+                    commentHeader: UnsafeMutableRawPointer) throws {
+    assert(commentHeader.assumingMemoryBound(to: CChar.self).pointee == Character("#").asciiValue!)
+    comments += String(cString: commentHeader.assumingMemoryBound(to: CChar.self))
+}
+
+
+func _disposeOfComments(pam: inout Pam, comments: String) {
+    pam.comment = comments
+}
