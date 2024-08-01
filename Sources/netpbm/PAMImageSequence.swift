@@ -400,7 +400,6 @@ func _pnm_readpamrow(pam: Pam) throws -> [[Sample]] {
 }
 
 func _readRawNonPbmRow(pam: Pam) throws -> [[Sample]] {
-
     let rowImageSize = Int(pam.width) * Int(pam.bytes_per_sample) * Int(pam.depth)
 
     let inbuf = _pnm_allocrowimage(pam: pam)
@@ -512,15 +511,15 @@ func _parse4BpsRow(pam: Pam, inbuf: UnsafeMutableRawBufferPointer) -> [[Sample]]
 }
 
 func _bytes2ToSample(buf: Slice<UnsafeMutableRawBufferPointer>) -> Sample {
-    Sample(buf[buf.startIndex] << 8) | Sample(buf[buf.startIndex + 1])
+    (Sample(buf[buf.startIndex]) << 8) | Sample(buf[buf.startIndex + 1])
 }
 
 func _bytes3ToSample(buf: Slice<UnsafeMutableRawBufferPointer>) -> Sample {
-    Sample(buf[buf.startIndex] << 16) | Sample(buf[buf.startIndex + 1] << 8) | Sample(buf[buf.startIndex + 2])
+    (Sample(buf[buf.startIndex]) << 16) | (Sample(buf[buf.startIndex + 1]) << 8) | Sample(buf[buf.startIndex + 2])
 }
 
 func _bytes4ToSample(buf: Slice<UnsafeMutableRawBufferPointer>) -> Sample {
-    Sample(buf[buf.startIndex] << 24) | Sample(buf[buf.startIndex + 1] << 16) | Sample(buf[buf.startIndex + 2] << 8) | Sample(buf[buf.startIndex + 3])
+    (Sample(buf[buf.startIndex]) << 24) | (Sample(buf[buf.startIndex + 1]) << 16) | (Sample(buf[buf.startIndex + 2]) << 8) | Sample(buf[buf.startIndex + 3])
 }
 
 func _validatePamRow(pam: Pam, tuplerow: [[Sample]]) throws {
